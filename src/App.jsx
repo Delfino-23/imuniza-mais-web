@@ -36,15 +36,15 @@ export default function App() {
             <span>›</span>
             <span className="text-slate-700 font-semibold capitalize">
               {paginaAtiva === "dashboard" ? "Painel Geral" :
-               paginaAtiva === "pacientes" ? "Pacientes" :
-               paginaAtiva === "vacinas" ? "Estoque de Vacinas" : "Aplicações"}
+                paginaAtiva === "pacientes" ? "Pacientes" :
+                  paginaAtiva === "vacinas" ? "Estoque de Vacinas" : "Aplicações"}
             </span>
           </div>
           <div className="flex items-center gap-3">
             {/* Sino de notificações */}
             <button className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors relative">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white" />
             </button>

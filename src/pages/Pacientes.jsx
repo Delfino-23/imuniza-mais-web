@@ -2,14 +2,37 @@
 // Pacientes.jsx — Tela de gerenciamento de pacientes
 // ============================================================
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal";
-import { pacientes as dadosPacientes, aplicacoes } from "../data/mockData";
+// import { pacientes as dadosPacientes, aplicacoes } from "../data/mockData";
+import api from "../../services/api.js";
+
+const cadastrarPaciente = async (dadosForm) => {
+  try {
+    const response = await fetch('http://localhost:3000/api/pacientes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dadosForm),
+    });
+
+    if (!response.ok) {
+      throw new Error('Erro ao cadastrar paciente');
+    }
+
+    const resultado = await response.json();
+    alert('Paciente cadastrado com sucesso!');
+  } catch (error) {
+    console.error("Erro ao cadastrar paciente:", error);
+    alert('Houve um erro ao tentar salvar o paciente.');
+  }
+}
 
 // Formulário de paciente (usado em cadastro e edição)
 function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
-    nome: "", cpf: "", nascimento: "", sexo: "", telefone: "", endereco: "",
+    nome: "", cpf: "", data_nascimento: "", sexo: "", telefone: "", endereco: "",
     ...inicial,
   });
 
@@ -36,7 +59,7 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
         </div>
         <div>
           <label className={labelCls}>Data de Nascimento *</label>
-          <input type="date" className={inputCls} value={form.nascimento} onChange={set("nascimento")} required />
+          <input type="date" className={inputCls} value={form.data_nascimento} onChange={set("data_nascimento")} required />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -77,7 +100,7 @@ function HistoricoPaciente({ paciente, onFechar }) {
     <div className="space-y-4">
       <div className="bg-teal-50 rounded-xl p-4 border border-teal-100">
         <p className="text-sm font-semibold text-teal-800">{paciente.nome}</p>
-        <p className="text-xs text-teal-600 mt-0.5">CPF: {paciente.cpf} · Nasc.: {new Date(paciente.nascimento + "T00:00:00").toLocaleDateString("pt-BR")}</p>
+        <p className="text-xs text-teal-600 mt-0.5">CPF: {paciente.cpf} · Nasc.: {new Date(p.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR")}</p>
       </div>
       {historico.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-6">Nenhuma vacinação registrada.</p>
@@ -86,7 +109,7 @@ function HistoricoPaciente({ paciente, onFechar }) {
           {historico.map(h => (
             <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-4 h-4"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-4 h-4"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-700">{h.vacinaNome}</p>
@@ -107,7 +130,7 @@ function HistoricoPaciente({ paciente, onFechar }) {
 }
 
 export default function Pacientes() {
-  const [pacientes, setPacientes] = useState(dadosPacientes);
+  const [pacientes, setPacientes] = useState([]);
   const [busca, setBusca] = useState("");
   const [modalCadastro, setModalCadastro] = useState(false);
   const [pacienteEdicao, setPacienteEdicao] = useState(null);
@@ -133,6 +156,25 @@ export default function Pacientes() {
     setPacienteEdicao(null);
   };
 
+  const carregarPacientes = async () => {
+
+    try {
+
+      const response = await api.get('/pacientes');
+      setPacientes(response.data.data);
+
+    } catch (error) {
+
+      console.error('Erro ao carregar pacientes:', error);
+    }
+  };
+
+  useEffect(() => {
+
+    carregarPacientes();
+
+  }, []);
+
   const abrirEdicao = (p) => { setPacienteEdicao(p); setModalCadastro(true); };
 
   return (
@@ -147,7 +189,7 @@ export default function Pacientes() {
           onClick={() => { setPacienteEdicao(null); setModalCadastro(true); }}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-teal-100 flex-shrink-0"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M12 5v14M5 12h14" strokeLinecap="round"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
           Cadastrar Novo Paciente
         </button>
       </div>
@@ -155,7 +197,7 @@ export default function Pacientes() {
       {/* Busca */}
       <div className="relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" strokeLinecap="round"/>
+          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" strokeLinecap="round" />
         </svg>
         <input
           className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent shadow-sm"
@@ -196,7 +238,7 @@ export default function Pacientes() {
                   </td>
                   <td className="px-6 py-4 text-slate-600 font-mono text-sm">{p.cpf}</td>
                   <td className="px-6 py-4 text-slate-600 hidden md:table-cell">
-                    {new Date(p.nascimento + "T00:00:00").toLocaleDateString("pt-BR")}
+                    {new Date(p.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' })}
                   </td>
                   <td className="px-6 py-4 text-slate-600 hidden lg:table-cell">{p.telefone || "—"}</td>
                   <td className="px-6 py-4">
@@ -246,7 +288,7 @@ export default function Pacientes() {
       >
         <FormPaciente
           inicial={pacienteEdicao || {}}
-          onSalvar={salvarPaciente}
+          onSalvar={cadastrarPaciente}
           onCancelar={() => { setModalCadastro(false); setPacienteEdicao(null); }}
         />
       </Modal>
