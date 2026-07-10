@@ -2,16 +2,17 @@
 // Dashboard.jsx — Painel principal com KPIs e resumos
 // ============================================================
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { pacientes, vacinas, aplicacoes, getStatus } from "../data/mockData";
+import api from "../../services/api.js";
 
 // Card de KPI reutilizável
 function KPICard({ titulo, valor, subtitulo, cor, icon }) {
   const cores = {
-    teal:   { bg: "from-teal-500 to-cyan-500",   light: "bg-teal-50",  text: "text-teal-600",  shadow: "shadow-teal-100" },
-    blue:   { bg: "from-blue-500 to-indigo-500",  light: "bg-blue-50",  text: "text-blue-600",  shadow: "shadow-blue-100" },
-    green:  { bg: "from-emerald-500 to-green-500",light: "bg-emerald-50",text: "text-emerald-600",shadow: "shadow-emerald-100"},
-    amber:  { bg: "from-amber-400 to-orange-400", light: "bg-amber-50", text: "text-amber-600", shadow: "shadow-amber-100" },
+    teal: { bg: "from-teal-500 to-cyan-500", light: "bg-teal-50", text: "text-teal-600", shadow: "shadow-teal-100" },
+    blue: { bg: "from-blue-500 to-indigo-500", light: "bg-blue-50", text: "text-blue-600", shadow: "shadow-blue-100" },
+    green: { bg: "from-emerald-500 to-green-500", light: "bg-emerald-50", text: "text-emerald-600", shadow: "shadow-emerald-100" },
+    amber: { bg: "from-amber-400 to-orange-400", light: "bg-amber-50", text: "text-amber-600", shadow: "shadow-amber-100" },
   };
   const c = cores[cor];
   return (
@@ -29,6 +30,8 @@ function KPICard({ titulo, valor, subtitulo, cor, icon }) {
 }
 
 export default function Dashboard({ setPaginaAtiva }) {
+  const [qtdePacientes, setQtdePacientes] = useState([]);
+
   // Cálculos derivados dos dados mockados
   const hoje = new Date().toISOString().split("T")[0];
   const aplicacoesHoje = aplicacoes.filter(a => a.data === hoje).length;
@@ -41,6 +44,32 @@ export default function Dashboard({ setPaginaAtiva }) {
   const ultimasAplicacoes = [...aplicacoes].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 5);
 
   const vacinasCriticas = vacinas.filter(v => getStatus(v).cor !== "green");
+
+  const countPacientes = async () => {
+    try {
+      const response = await api.get('/pacientes/');
+
+      // 1. ADICIONE ESTE LOG para inspecionar a estrutura exata no console do navegador:
+      console.log("RESPOSTA COMPLETA DO BACKEND:", response.data);
+
+      // Se o backend enviar direto o objeto de image_46bca5.png:
+      if (response.data && response.data.total !== undefined) {
+        setQtdePacientes(response.data.total);
+      }
+      // Se o backend envelopar dentro de outra chave (ex: response.data.data):
+      else if (response.data.data && response.data.data.total !== undefined) {
+        setQtdePacientes(response.data.data.total);
+      }
+
+    } catch (error) {
+      console.error('Erro ao carregar pacientes:', error);
+    }
+  }
+
+  // Esse hook diz ao React: "assim que a tela carregar, execute o que está aqui dentro"
+  useEffect(() => {
+    countPacientes();
+  }, []); // Os colchetes vazios garantem que só rode UMA vez ao abrir a página
 
   return (
     <div className="space-y-8">
@@ -56,31 +85,31 @@ export default function Dashboard({ setPaginaAtiva }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           titulo="Pacientes Cadastrados"
-          valor={pacientes.length}
+          valor={qtdePacientes}
           subtitulo="Total no sistema"
           cor="teal"
-          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
         />
         <KPICard
           titulo="Aplicações Hoje"
           valor={aplicacoesHoje}
           subtitulo="Doses aplicadas no dia"
           cor="blue"
-          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="M9 12l2 2 4-4"/><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/></svg>}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="M9 12l2 2 4-4" /><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" /></svg>}
         />
         <KPICard
           titulo="Doses em Estoque"
           valor={totalDoses.toLocaleString("pt-BR")}
           subtitulo={`${vacinas.length} lotes ativos`}
           cor="green"
-          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="m18 2 4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/></svg>}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="m18 2 4 4" /><path d="m17 7 3-3" /><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5" /></svg>}
         />
         <KPICard
           titulo="Alertas de Estoque"
           valor={alertasEstoque}
           subtitulo="Lotes que precisam de atenção"
           cor="amber"
-          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
         />
       </div>
 
@@ -137,9 +166,8 @@ export default function Dashboard({ setPaginaAtiva }) {
                         <p className="text-sm font-semibold text-slate-700 truncate">{v.nome}</p>
                         <p className="text-xs text-slate-400">{v.doses} doses · Lote {v.lote}</p>
                       </div>
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                        s.cor === "red" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                      }`}>{s.label}</span>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${s.cor === "red" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                        }`}>{s.label}</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-1">
                       Validade: {new Date(v.validade + "T00:00:00").toLocaleDateString("pt-BR")}

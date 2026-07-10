@@ -4,32 +4,12 @@
 
 import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal";
-// import { pacientes as dadosPacientes, aplicacoes } from "../data/mockData";
 import api from "../../services/api.js";
 
-const cadastrarPaciente = async (dadosForm) => {
-  try {
-    const response = await fetch('http://localhost:3000/api/pacientes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(dadosForm),
-    });
+// Simulando a importação do mock se necessário para a listagem do histórico
+// import { aplicacoes } from "../data/mockData"; 
+const aplicacoes = []; // Caso venha de outro lugar, ajuste aqui
 
-    if (!response.ok) {
-      throw new Error('Erro ao cadastrar paciente');
-    }
-
-    const resultado = await response.json();
-    alert('Paciente cadastrado com sucesso!');
-  } catch (error) {
-    console.error("Erro ao cadastrar paciente:", error);
-    alert('Houve um erro ao tentar salvar o paciente.');
-  }
-}
-
-// Formulário de paciente (usado em cadastro e edição)
 function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
     nome: "", cpf: "", data_nascimento: "", sexo: "", telefone: "", endereco: "",
@@ -93,14 +73,15 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
   );
 }
 
-// Modal de histórico de vacinação do paciente
 function HistoricoPaciente({ paciente, onFechar }) {
   const historico = aplicacoes.filter(a => a.pacienteId === paciente.id);
   return (
     <div className="space-y-4">
       <div className="bg-teal-50 rounded-xl p-4 border border-teal-100">
         <p className="text-sm font-semibold text-teal-800">{paciente.nome}</p>
-        <p className="text-xs text-teal-600 mt-0.5">CPF: {paciente.cpf} · Nasc.: {new Date(p.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR")}</p>
+        <p className="text-xs text-teal-600 mt-0.5">
+          CPF: {paciente.cpf} · Nasc.: {paciente.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' }) : "—"}
+        </p>
       </div>
       {historico.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-6">Nenhuma vacinação registrada.</p>
@@ -116,7 +97,7 @@ function HistoricoPaciente({ paciente, onFechar }) {
                 <p className="text-xs text-slate-400">{h.dose} · Lote: {h.lote} · {h.profissional}</p>
               </div>
               <span className="text-xs font-medium text-slate-500 flex-shrink-0">
-                {new Date(h.data + "T00:00:00").toLocaleDateString("pt-BR")}
+                {h.data_nascimento ? new Date(h.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' }) : "—"}
               </span>
             </div>
           ))}
@@ -130,7 +111,7 @@ function HistoricoPaciente({ paciente, onFechar }) {
 }
 
 export default function Pacientes() {
-  const [pacientes, setPacientes] = useState([]);
+  const [pacientes, setPacientes] = useState({ total: 0, pacientes: [] });
   const [busca, setBusca] = useState("");
   const [modalCadastro, setModalCadastro] = useState(false);
   const [pacienteEdicao, setPacienteEdicao] = useState(null);
@@ -138,52 +119,66 @@ export default function Pacientes() {
   const [pagina, setPagina] = useState(1);
   const POR_PAGINA = 5;
 
-  // Filtragem
-  const filtrados = pacientes.filter(p =>
+  const filtrados = (pacientes.pacientes || []).filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
     p.cpf.includes(busca)
   );
   const totalPaginas = Math.ceil(filtrados.length / POR_PAGINA);
   const paginados = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
-  const salvarPaciente = (form) => {
-    if (pacienteEdicao) {
-      setPacientes(p => p.map(x => x.id === pacienteEdicao.id ? { ...x, ...form } : x));
-    } else {
-      setPacientes(p => [...p, { ...form, id: Date.now() }]);
-    }
-    setModalCadastro(false);
-    setPacienteEdicao(null);
-  };
-
   const carregarPacientes = async () => {
-
     try {
-
-      const response = await api.get('/pacientes');
+      const response = await api.get('/pacientes/');
       setPacientes(response.data.data);
-
     } catch (error) {
-
       console.error('Erro ao carregar pacientes:', error);
     }
   };
 
   useEffect(() => {
-
     carregarPacientes();
-
   }, []);
 
-  const abrirEdicao = (p) => { setPacienteEdicao(p); setModalCadastro(true); };
+  const cadastrarPaciente = async (dadosForm) => {
+    try {
+      const dadosFormatados = {
+        ...dadosForm,
+        data_nascimento: dadosForm.data_nascimento ? dadosForm.data_nascimento.split('T')[0] : ""
+      };
+
+      if (pacienteEdicao) {
+        await api.put(`/pacientes/${pacienteEdicao.id}`, dadosFormatados);
+        alert('Paciente atualizado com sucesso!');
+      } else {
+        await api.post('/pacientes/', dadosFormatados);
+        alert('Paciente cadastrado com sucesso!');
+      }
+
+      await carregarPacientes();
+      setModalCadastro(false);
+      setPacienteEdicao(null);
+    } catch (error) {
+      console.error("Erro ao salvar paciente:", error);
+      alert('Houve um erro ao tentar salvar o paciente no servidor.');
+    }
+  };
+
+  const abrirEdicao = (p) => {
+    const dataFormatada = {
+      ...p,
+      data_nascimento: p.data_nascimento ? p.data_nascimento.split('T')[0] : ""
+    };
+
+    setPacienteEdicao(dataFormatada);
+    setModalCadastro(true);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Pacientes</h2>
-          <p className="text-slate-500 text-sm mt-1">{pacientes.length} pacientes cadastrados</p>
+          <p className="text-slate-500 text-sm mt-1">{(pacientes.total || 0)} pacientes cadastrados</p>
         </div>
         <button
           onClick={() => { setPacienteEdicao(null); setModalCadastro(true); }}
@@ -194,7 +189,6 @@ export default function Pacientes() {
         </button>
       </div>
 
-      {/* Busca */}
       <div className="relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
           <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" strokeLinecap="round" />
@@ -207,7 +201,6 @@ export default function Pacientes() {
         />
       </div>
 
-      {/* Tabela */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -228,7 +221,7 @@ export default function Pacientes() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {p.nome.split(" ").map(n => n[0]).slice(0, 2).join("")}
+                        {p.nome ? p.nome.split(" ").map(n => n[0]).slice(0, 2).join("") : "PA"}
                       </div>
                       <div>
                         <p className="font-semibold text-slate-800">{p.nome}</p>
@@ -238,7 +231,7 @@ export default function Pacientes() {
                   </td>
                   <td className="px-6 py-4 text-slate-600 font-mono text-sm">{p.cpf}</td>
                   <td className="px-6 py-4 text-slate-600 hidden md:table-cell">
-                    {new Date(p.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' })}
+                    {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' }) : "—"}
                   </td>
                   <td className="px-6 py-4 text-slate-600 hidden lg:table-cell">{p.telefone || "—"}</td>
                   <td className="px-6 py-4">
@@ -263,7 +256,6 @@ export default function Pacientes() {
           </table>
         </div>
 
-        {/* Paginação */}
         {totalPaginas > 1 && (
           <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
             <p className="text-xs text-slate-500">
@@ -280,7 +272,6 @@ export default function Pacientes() {
         )}
       </div>
 
-      {/* Modal Cadastro/Edição */}
       <Modal
         aberto={modalCadastro}
         onFechar={() => { setModalCadastro(false); setPacienteEdicao(null); }}
@@ -293,7 +284,6 @@ export default function Pacientes() {
         />
       </Modal>
 
-      {/* Modal Histórico */}
       <Modal
         aberto={!!pacienteHistorico}
         onFechar={() => setPacienteHistorico(null)}
