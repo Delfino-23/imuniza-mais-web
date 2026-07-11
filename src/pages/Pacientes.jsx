@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal";
 import api from "../services/api.js";
+import { formatarCPF, formatarTelefone } from "../utils/formatadores.js";
 
 // Simulando a importação do mock se necessário para a listagem do histórico
 // import { aplicacoes } from "../data/mockData"; 
@@ -35,7 +36,15 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>CPF *</label>
-          <input className={inputCls} value={form.cpf} onChange={set("cpf")} placeholder="000.000.000-00" required />
+          <input
+            type="text"
+            className={inputCls}
+            maxLength={14}
+            value={form.cpf}
+            onChange={(e) => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
+            placeholder="000.000.000-00"
+            required
+          />
         </div>
         <div>
           <label className={labelCls}>Data de Nascimento *</label>
@@ -54,7 +63,14 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
         </div>
         <div>
           <label className={labelCls}>Telefone</label>
-          <input className={inputCls} value={form.telefone} onChange={set("telefone")} placeholder="(00) 00000-0000" />
+          <input
+            type="text"
+            className={inputCls}
+            value={form.telefone}
+            onChange={(e) => setForm({ ...form, telefone: formatarTelefone(e.target.value) })}
+            placeholder="(00) 00000-0000"
+            required
+          />
         </div>
       </div>
       <div>
@@ -229,11 +245,11 @@ export default function Pacientes() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-600 font-mono text-sm">{p.cpf}</td>
+                  <td className="px-6 py-4 text-slate-600 font-mono text-sm">{formatarCPF(p.cpf)}</td>
                   <td className="px-6 py-4 text-slate-600 hidden md:table-cell">
                     {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' }) : "—"}
                   </td>
-                  <td className="px-6 py-4 text-slate-600 hidden lg:table-cell">{p.telefone || "—"}</td>
+                  <td className="px-6 py-4 text-slate-600 hidden lg:table-cell">{formatarTelefone(p.telefone) || "—"}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
