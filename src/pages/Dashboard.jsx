@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from "react";
 import { pacientes, vacinas, aplicacoes, getStatus } from "../data/mockData";
-import api from "../../services/api.js";
+import api from "../services/api";
 
 // Card de KPI reutilizável
 function KPICard({ titulo, valor, subtitulo, cor, icon }) {

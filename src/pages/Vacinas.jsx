@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from "react";
 import Modal from "../components/Modal";
 import Badge from "../components/Badge";
-import api from "../../services/api.js";
+import api from "../services/api.js";
 
 function FormVacina({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({

@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal";
-import api from "../../services/api.js";
+import api from "../services/api.js";
 
 // Simulando a importação do mock se necessário para a listagem do histórico
 // import { aplicacoes } from "../data/mockData"; 
