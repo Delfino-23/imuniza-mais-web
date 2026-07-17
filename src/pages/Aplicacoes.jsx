@@ -1,23 +1,20 @@
-// ============================================================
-// Aplicacoes.jsx — Tela de registro de vacinação
-// ============================================================
-
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Badge from "../components/Badge";
 import {
-  pacientes,
-  vacinas,
-  aplicacoes as dadosAplicacoes,
   DOSES_OPCOES,
   getStatus,
 } from "../data/mockData";
+import api from "../services/api";
+import { vacinasDisponiveis } from "../utils/vacinasUtils.js";
+import { formatarCPF } from "../utils/formatadores.js";
 
 // Campo de autocomplete para pacientes
 function AutocompletePaciente({ valor, onChange }) {
+  const [pacientes, setPacientes] = useState({ total: 0, pacientes: [] });
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState(valor?.nome || "");
 
-  const filtrados = pacientes.filter(p =>
+  const filtrados = (pacientes.pacientes || []).filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
     p.cpf.includes(busca)
   ).slice(0, 6);
@@ -27,6 +24,19 @@ function AutocompletePaciente({ valor, onChange }) {
     setBusca(p.nome);
     setAberto(false);
   };
+
+  const carregarPacientes = async () => {
+    try {
+      const response = await api.get("/pacientes/");
+      setPacientes(response.data.data);
+    } catch (error) {
+      console.error("Erro ao carregar pacientes:", error);
+    }
+  }
+
+  useEffect(() => {
+    carregarPacientes();
+  }, []);
 
   return (
     <div className="relative">
@@ -52,7 +62,7 @@ function AutocompletePaciente({ valor, onChange }) {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-700">{p.nome}</p>
-                <p className="text-xs text-slate-400">{p.cpf}</p>
+                <p className="text-xs text-slate-400">{formatarCPF(p.cpf)}</p>
               </div>
             </button>
           ))}
@@ -65,7 +75,8 @@ function AutocompletePaciente({ valor, onChange }) {
 export default function Aplicacoes() {
   const hoje = new Date().toISOString().split("T")[0];
 
-  const [aplicacoes, setAplicacoes] = useState(dadosAplicacoes);
+  // 1. Alterado: Começa como array vazio para receber do banco
+  const [aplicacoes, setAplicacoes] = useState([]);
   const [form, setForm] = useState({
     paciente: null,
     vacinaId: "",
@@ -75,35 +86,70 @@ export default function Aplicacoes() {
   });
   const [sucesso, setSucesso] = useState(false);
   const [pagina, setPagina] = useState(1);
+  const [vacinas, setVacinas] = useState([]);
   const POR_PAGINA = 5;
 
-  // Vacinas disponíveis (com estoque > 0)
-  const vacinasDisponiveis = vacinas.filter(v => v.doses > 0);
+  // Carregar vacinas disponíveis para o formulário
+  useEffect(() => {
+    const carregarVacinas = async () => {
+      try {
+        const response = await api.get("/vacinas/");
+        setVacinas(response.data.data || response.data || []);
+      } catch (error) {
+        console.error("Erro ao carregar vacinas:", error);
+      }
+    };
+
+    carregarVacinas();
+  }, []);
+
+  // 2. NOVO: Carregar registros de histórico salvos no banco de dados
+  const carregarHistorico = async () => {
+    try {
+      const response = await api.get("/historico/"); // Ajuste o endpoint se for diferente
+      setAplicacoes(response.data.data || response.data || []);
+    } catch (error) {
+      console.error("Erro ao carregar histórico de aplicações:", error);
+    }
+  };
+
+  useEffect(() => {
+    carregarHistorico();
+  }, []);
+
+  const listaVacinasDisponiveis = vacinasDisponiveis(vacinas);
 
   const setF = (campo) => (e) => setForm(p => ({ ...p, [campo]: e.target.value }));
 
-  const vacinasSelecionada = vacinasDisponiveis.find(v => v.id === Number(form.vacinaId));
+  const vacinasSelecionada = listaVacinasDisponiveis.find(v => v.id === Number(form.vacinaId));
 
-  const handleSubmit = (e) => {
+  // 3. Alterado: Salva no banco de dados de fato via requisição POST
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.paciente || !form.vacinaId || !form.dose || !form.profissional) return;
 
-    const nova = {
-      id: Date.now(),
-      pacienteId: form.paciente.id,
-      pacienteNome: form.paciente.nome,
-      vacinaId: Number(form.vacinaId),
-      vacinaNome: vacinasSelecionada?.nome || "",
-      lote: vacinasSelecionada?.lote || "",
-      data: form.data,
-      dose: form.dose,
-      profissional: form.profissional,
-    };
+    try {
+      // Corpo esperado pelas colunas da sua tabela 'historico_vacinal'
+      const payload = {
+        paciente_id: form.paciente.id,
+        vacina_id: Number(form.vacinaId),
+        data_aplicacao: form.data,
+        dose: form.dose,
+        profissional_responsavel: form.profissional,
+      };
 
-    setAplicacoes(a => [nova, ...a]);
-    setSucesso(true);
-    setForm({ paciente: null, vacinaId: "", data: hoje, dose: "", profissional: "" });
-    setTimeout(() => setSucesso(false), 3000);
+      await api.post("/historico/", payload); // Ajuste o endpoint se for diferente
+
+      setSucesso(true);
+      setForm({ paciente: null, vacinaId: "", data: hoje, dose: "", profissional: "" });
+
+      // Recarrega o histórico atualizado vindo do banco e limpa o alerta de sucesso
+      await carregarHistorico();
+      setTimeout(() => setSucesso(false), 3000);
+    } catch (error) {
+      console.error("Erro ao salvar aplicação no banco:", error);
+      alert("Ocorreu um erro ao registrar a aplicação no banco de dados.");
+    }
   };
 
   const totalPaginas = Math.ceil(aplicacoes.length / POR_PAGINA);
@@ -125,7 +171,7 @@ export default function Aplicacoes() {
         <div className="px-6 py-4 bg-gradient-to-r from-teal-500 to-cyan-500">
           <h3 className="font-semibold text-white text-base flex items-center gap-2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5">
-              <path d="M12 5v14M5 12h14" strokeLinecap="round"/>
+              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
             Nova Aplicação de Vacina
           </h3>
@@ -135,7 +181,7 @@ export default function Aplicacoes() {
         {/* Alerta de sucesso */}
         {sucesso && (
           <div className="mx-6 mt-4 flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm font-semibold">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 flex-shrink-0"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 flex-shrink-0"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
             Aplicação registrada com sucesso!
           </div>
         )}
@@ -150,7 +196,7 @@ export default function Aplicacoes() {
             />
             {form.paciente && (
               <p className="text-xs text-teal-600 mt-1.5 font-medium">
-                ✓ {form.paciente.nome} · CPF: {form.paciente.cpf}
+                ✓ {form.paciente.nome} · CPF: {formatarCPF(form.paciente.cpf)}
               </p>
             )}
           </div>
@@ -160,7 +206,7 @@ export default function Aplicacoes() {
             <label className={labelCls}>Vacina / Lote Disponível *</label>
             <select className={inputCls} value={form.vacinaId} onChange={setF("vacinaId")} required>
               <option value="">Selecionar vacina disponível...</option>
-              {vacinasDisponiveis.map(v => {
+              {listaVacinasDisponiveis.map(v => {
                 const s = getStatus(v);
                 return (
                   <option key={v.id} value={v.id}>
@@ -172,7 +218,7 @@ export default function Aplicacoes() {
             {vacinasSelecionada && (
               <div className="flex items-center gap-2 mt-1.5">
                 <p className="text-xs text-slate-500">
-                  Fabricante: {vacinasSelecionada.fabricante} · Validade: {new Date(vacinasSelecionada.validade + "T00:00:00").toLocaleDateString("pt-BR")}
+                  Fabricante: {vacinasSelecionada.fabricante} · Validade: {new Date(vacinasSelecionada.validade).toLocaleDateString("pt-BR")}
                 </p>
               </div>
             )}
@@ -204,7 +250,7 @@ export default function Aplicacoes() {
             type="submit"
             className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-teal-100 flex items-center justify-center gap-2"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
             Registrar Aplicação
           </button>
         </form>
@@ -229,29 +275,47 @@ export default function Aplicacoes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {paginadas.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {a.pacienteNome.split(" ").map(n => n[0]).slice(0, 2).join("")}
+              {paginadas.map((a) => {
+                // 4. Mapeamento das chaves baseado no seu retorno de relacionamento do Sequelize
+                // (Geralmente inclui models associados como 'Paciente' e 'Vacina')
+                const nomePaciente = a.Paciente?.nome || a.pacienteNome || "Não informado";
+                const nomeVacina = a.Vacina?.nome || a.vacinaNome || "Não informada";
+                const loteVacina = a.Vacina?.lote || a.lote || "-";
+                const profissional = a.profissional_responsavel || a.profissional || "-";
+                const dataAplicacao = a.data_aplicacao || a.data;
+
+                return (
+                  <tr key={a.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {nomePaciente.split(" ").map(n => n[0]).slice(0, 2).join("")}
+                        </div>
+                        <span className="font-semibold text-slate-700 truncate max-w-[140px]">
+                          {nomePaciente}
+                        </span>
                       </div>
-                      <span className="font-semibold text-slate-700 truncate max-w-[140px]">{a.pacienteNome}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600 hidden md:table-cell">
-                    <p className="font-medium text-slate-700 truncate max-w-[180px]">{a.vacinaNome}</p>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 font-mono text-xs hidden lg:table-cell">{a.lote}</td>
-                  <td className="px-6 py-4 text-center">
-                    <Badge label={a.dose} cor="blue" />
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 text-xs hidden lg:table-cell">{a.profissional}</td>
-                  <td className="px-6 py-4 text-right text-slate-600 font-medium text-xs">
-                    {new Date(a.data + "T00:00:00").toLocaleDateString("pt-BR")}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 hidden md:table-cell">
+                      <p className="font-medium text-slate-700 truncate max-w-[180px]">
+                        {nomeVacina}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 font-mono text-xs hidden lg:table-cell">
+                      {loteVacina}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Badge label={a.dose} cor="blue" />
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 text-xs hidden lg:table-cell">
+                      {profissional}
+                    </td>
+                    <td className="px-6 py-4 text-right text-slate-600 font-medium text-xs">
+                      {dataAplicacao ? new Date(dataAplicacao + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

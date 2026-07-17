@@ -3,7 +3,8 @@
 // ============================================================
 
 import React, { useEffect, useState } from "react";
-import { pacientes, vacinas, aplicacoes, getStatus } from "../data/mockData";
+import { pacientes, vacinas, aplicacoes } from "../data/mockData";
+import { getStatus } from "../utils/vacinasUtils.js";
 import api from "../services/api";
 
 // Card de KPI reutilizável
@@ -31,19 +32,21 @@ function KPICard({ titulo, valor, subtitulo, cor, icon }) {
 
 export default function Dashboard({ setPaginaAtiva }) {
   const [qtdePacientes, setQtdePacientes] = useState([]);
+  const [qtdeVacinas, setQtdeVacinas] = useState([]);
+  const [listaVacinas, setListaVacinas] = useState({ total: 0, vacinas: [] });
 
   // Cálculos derivados dos dados mockados
   const hoje = new Date().toISOString().split("T")[0];
   const aplicacoesHoje = aplicacoes.filter(a => a.data === hoje).length;
   const totalDoses = vacinas.reduce((acc, v) => acc + v.doses, 0);
-  const alertasEstoque = vacinas.filter(v => {
+  const alertasEstoque = (vacinas.vacinas || []).filter(v => {
     const s = getStatus(v);
     return s.cor === "red" || s.cor === "amber";
   }).length;
 
   const ultimasAplicacoes = [...aplicacoes].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 5);
 
-  const vacinasCriticas = vacinas.filter(v => getStatus(v).cor !== "green");
+  const vacinasCriticas = (vacinas.vacinas || []).filter(v => getStatus(v).cor !== "green");
 
   const countPacientes = async () => {
     try {
@@ -66,10 +69,41 @@ export default function Dashboard({ setPaginaAtiva }) {
     }
   }
 
+  const countVacinas = async () => {
+    try {
+      const response = await api.get('/vacinas/');
+      console.log("RESPOSTA COMPLETA DO BACKEND (Vacinas): ", response.data);
+
+      const listaFinal = response.data.data || response.data || [];
+
+      setListaVacinas({
+        total: listaFinal.length,
+        vacinas: listaFinal
+      })
+
+      if (response.data && response.data.total !== undefined) {
+        setQtdeVacinas(response.data.total);
+      } else if (response.data.data && response.data.data.total !== undefined) {
+        setQtdeVacinas(response.data.data.total);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar vacinas:', error);
+      setListaVacinas({ total: 0, vacinas: [] });
+    }
+  }
+
   // Esse hook diz ao React: "assim que a tela carregar, execute o que está aqui dentro"
   useEffect(() => {
     countPacientes();
+    countVacinas();
   }, []); // Os colchetes vazios garantem que só rode UMA vez ao abrir a página
+
+  // const alertasEstoque = (listaVacinas.vacinas || []).filter(v => {
+  //   const s = getStatus(v);
+  //   return s.cor === "red" || s.cor === "amber";
+  // }).length;
+  // const vacinasCriticas = (listaVacinas.vacinas || []).filter(v => getStatus(v).cor !== "green");
+
 
   return (
     <div className="space-y-8">
@@ -99,7 +133,7 @@ export default function Dashboard({ setPaginaAtiva }) {
         />
         <KPICard
           titulo="Doses em Estoque"
-          valor={totalDoses.toLocaleString("pt-BR")}
+          valor={qtdeVacinas}
           subtitulo={`${vacinas.length} lotes ativos`}
           cor="green"
           icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="m18 2 4 4" /><path d="m17 7 3-3" /><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5" /></svg>}

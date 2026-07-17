@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import Modal from "../components/Modal";
 import Badge from "../components/Badge";
 import api from "../services/api.js";
+import { getStatus } from "../utils/vacinasUtils.js";
 
 function FormVacina({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
@@ -85,15 +86,7 @@ export default function Vacinas() {
     try {
       const response = await api.get("/vacinas/");
       console.log("Vacinas carregadas:", response.data.data);
-
-      // Ajuste aqui: Como o backend retorna o array puro, nós o envelopamos 
-      // para o estado manter a mesma estrutura esperada pelo restante do componente.
-      const listaDeVacinas = response.data.data || [];
-      setVacinas({
-        total: listaDeVacinas.length,
-        vacinas: listaDeVacinas
-      });
-
+      setVacinas(response.data.data);
     } catch (error) {
       console.error("Erro ao carregar vacinas:", error);
     }
@@ -102,26 +95,6 @@ export default function Vacinas() {
   useEffect(() => {
     carregarVacinas();
   }, []);
-
-  const getStatus = (vacina) => {
-    if (!vacina) return { label: "Sem dados", cor: "slate" };
-
-    const hoje = new Date();
-    const dataValidade = new Date(vacina.validade ? vacina.validade.split('T')[0] + "T12:00:00" : "2100-01-01T12:00:00"); // Se não houver validade, assume uma data futura
-
-    // 1. Crítico: Estoque zerado ou vacina já venceu
-    if (vacina.quantidade_estoque <= 0 || dataValidade < hoje) {
-      return { label: "Crítico", cor: "red" };
-    }
-
-    // 2. Atenção: Estoque igual ou abaixo do mínimo definido para alerta
-    if (vacina.quantidade_estoque <= vacina.minimo_alerta) {
-      return { label: "Atenção", cor: "amber" };
-    }
-
-    // 3. Regular: Tudo em ordem
-    return { label: "Regular", cor: "green" };
-  };
 
   const cadastrarVacina = async (dadosForm) => {
     try {
