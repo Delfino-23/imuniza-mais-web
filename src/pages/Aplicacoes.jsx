@@ -90,13 +90,19 @@ export default function Aplicacoes() {
   const POR_PAGINA = 5;
 
   // Carregar vacinas disponíveis para o formulário
+  // Carregar vacinas disponíveis para o formulário
   useEffect(() => {
     const carregarVacinas = async () => {
       try {
         const response = await api.get("/vacinas/");
-        setVacinas(response.data.data || response.data || []);
+        const dados = response.data;
+
+        // Mapeia especificamente o array de vacinas da estrutura do backend
+        const listaArray = dados?.data?.vacinas || dados?.vacinas || (Array.isArray(dados) ? dados : []);
+        setVacinas(listaArray);
       } catch (error) {
         console.error("Erro ao carregar vacinas:", error);
+        setVacinas([]); // Fallback para array vazio em caso de erro
       }
     };
 
@@ -131,10 +137,10 @@ export default function Aplicacoes() {
     if (!form.paciente || !form.vacinaId || !form.dose || !form.profissional) return;
 
     try {
-      // Pega o lote da vacna selecionada
-      const loteSelecionado = vacinasSelecionada?.lote || '';
+      // Pega a vacina diretamente no array carregado
+      const vacinaEncontrada = vacinas.find((v) => v.id === Number(form.vacinaId));
+      const loteSelecionado = vacinaEncontrada?.lote || vacinaEncontrada?.numero_lote || '';
 
-      // Corpo esperado pelas colunas da sua tabela 'historico_vacinal'
       const payload = {
         paciente_id: form.paciente.id,
         vacina_id: Number(form.vacinaId),
@@ -282,12 +288,20 @@ export default function Aplicacoes() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {paginadas.map((a) => {
-                // 4. Mapeamento das chaves baseado no seu retorno de relacionamento do Sequelize
-                // (Geralmente inclui models associados como 'Paciente' e 'Vacina')
                 const nomePaciente = a.Paciente?.nome || a.paciente_nome || "Não informado";
-                const nomeVacina = a.Vacina?.nome || a.vacina_nome || "Não informada";
-                const loteVacina = a.vacina_lote || a.lote || a.Vacina?.lote || "-";
-                console.log(loteVacina);
+                // Procura de forma segura usando Array.isArray e Optional Chaining
+                const listaVacinasSegura = Array.isArray(vacinas) ? vacinas : [];
+                const vacinaRelacionada = listaVacinasSegura.find((v) => v.id === (a.vacina_id || a.Vacina?.id));
+                const nomeVacina = a.Vacina?.nome || a.vacina_nome || vacinaRelacionada?.nome || "Não informada";
+                const loteVacina =
+                  a.lote ||
+                  a.Vacina?.lote ||
+                  a.Vacina?.numero_lote ||
+                  a.vacina_lote ||
+                  vacinaRelacionada?.lote ||
+                  vacinaRelacionada?.numero_lote ||
+                  "-";
+
                 const profissional = a.profissional_responsavel || a.profissional || "-";
                 const dataAplicacao = a.data_aplicacao || a.data;
 
