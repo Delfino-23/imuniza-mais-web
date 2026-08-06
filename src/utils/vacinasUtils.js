@@ -1,22 +1,27 @@
-export const getStatus = (vacina) => {
-    if (!vacina) return { label: "Sem dados", cor: "slate" };
-
+export function getStatus(vacina) {
     const hoje = new Date();
-    const dataValidade = new Date(vacina.validade ? vacina.validade.split('T')[0] + "T12:00:00" : "2100-01-01T12:00:00"); // Se não houver validade, assume uma data futura
+    const validade = new Date(vacina.validade);
+    const diasParaVencer = Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24));
 
-    // 1. Crítico: Estoque zerado ou vacina já venceu
-    if (vacina.quantidade_estoque <= 0 || dataValidade < hoje) {
-        return { label: "Crítico", cor: "red" };
+    // Mapeia tanto quantidade_estoque (API) quanto doses (Mocks/Fallback)
+    const qtdDoses = Number(vacina.quantidade_estoque ?? vacina.doses ?? 0);
+    const estoqueMinimo = Number(vacina.estoque_minimo ?? vacina.minDoses ?? 20);
+
+    if (diasParaVencer < 0) {
+        return { label: "Crítico", cor: "red", motivo: "Vacina vencida" };
+    }
+    if (qtdDoses === 0) {
+        return { label: "Crítico", cor: "red", motivo: "Estoque zerado" };
+    }
+    if (diasParaVencer <= 30) {
+        return { label: "Crítico", cor: "red", motivo: `Vence em ${diasParaVencer} dias` };
+    }
+    if (qtdDoses <= estoqueMinimo) {
+        return { label: "Atenção", cor: "amber", motivo: "Abaixo do estoque mínimo" };
     }
 
-    // 2. Atenção: Estoque igual ou abaixo do mínimo definido para alerta
-    if (vacina.quantidade_estoque <= vacina.minimo_alerta) {
-        return { label: "Atenção", cor: "amber" };
-    }
-
-    // 3. Regular: Tudo em ordem
-    return { label: "Regular", cor: "green" };
-};
+    return { label: "Regular", cor: "green", motivo: "Lote em dia" };
+}
 
 export function vacinasDisponiveis(vacinas) {
     const vacinasDisponiveis = Array.isArray(vacinas)

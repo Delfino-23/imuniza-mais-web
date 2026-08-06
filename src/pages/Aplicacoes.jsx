@@ -107,7 +107,9 @@ export default function Aplicacoes() {
   const carregarHistorico = async () => {
     try {
       const response = await api.get("/historico/"); // Ajuste o endpoint se for diferente
-      setAplicacoes(response.data.data || response.data || []);
+      const dados = response.data.data || response.data || [];
+      console.log("Histórico carregado do banco:", dados[0]);
+      setAplicacoes(dados);
     } catch (error) {
       console.error("Erro ao carregar histórico de aplicações:", error);
     }
@@ -129,10 +131,14 @@ export default function Aplicacoes() {
     if (!form.paciente || !form.vacinaId || !form.dose || !form.profissional) return;
 
     try {
+      // Pega o lote da vacna selecionada
+      const loteSelecionado = vacinasSelecionada?.lote || '';
+
       // Corpo esperado pelas colunas da sua tabela 'historico_vacinal'
       const payload = {
         paciente_id: form.paciente.id,
         vacina_id: Number(form.vacinaId),
+        lote: loteSelecionado,
         data_aplicacao: form.data,
         dose: form.dose,
         profissional_responsavel: form.profissional,
@@ -278,9 +284,10 @@ export default function Aplicacoes() {
               {paginadas.map((a) => {
                 // 4. Mapeamento das chaves baseado no seu retorno de relacionamento do Sequelize
                 // (Geralmente inclui models associados como 'Paciente' e 'Vacina')
-                const nomePaciente = a.Paciente?.nome || a.pacienteNome || "Não informado";
-                const nomeVacina = a.Vacina?.nome || a.vacinaNome || "Não informada";
-                const loteVacina = a.Vacina?.lote || a.lote || "-";
+                const nomePaciente = a.Paciente?.nome || a.paciente_nome || "Não informado";
+                const nomeVacina = a.Vacina?.nome || a.vacina_nome || "Não informada";
+                const loteVacina = a.vacina_lote || a.lote || a.Vacina?.lote || "-";
+                console.log(loteVacina);
                 const profissional = a.profissional_responsavel || a.profissional || "-";
                 const dataAplicacao = a.data_aplicacao || a.data;
 
@@ -311,7 +318,7 @@ export default function Aplicacoes() {
                       {profissional}
                     </td>
                     <td className="px-6 py-4 text-right text-slate-600 font-medium text-xs">
-                      {dataAplicacao ? new Date(dataAplicacao + "T00:00:00").toLocaleDateString("pt-BR") : "-"}
+                      {dataAplicacao ? new Date(dataAplicacao).toLocaleDateString("pt-BR") : "-"}
                     </td>
                   </tr>
                 );
