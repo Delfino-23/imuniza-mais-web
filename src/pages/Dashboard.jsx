@@ -28,21 +28,29 @@ function KPICard({ titulo, valor, subtitulo, cor, icon }) {
 export default function Dashboard({ setPaginaAtiva }) {
   const [qtdePacientes, setQtdePacientes] = useState(0);
   const [vacinas, setVacinas] = useState([]);
+  const [historicoAplicacoes, setHistoricoAplicacoes] = useState([]);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const resPacientes = await api.get("/pacientes/");
-        const resVacinas = await api.get("/vacinas/");
+        const [resPacientes, resVacinas, resHistorico] = await Promise.all([
+          api.get("/pacientes/"),
+          api.get("/vacinas/"),
+          api.get("/historico/")
+        ])
 
-        // 1. Mapeia Pacientes -> resPacientes.data.totalPacientes
+        // 1. Mapeia Pacientes
         if (resPacientes.data?.totalPacientes !== undefined) {
           setQtdePacientes(resPacientes.data.totalPacientes);
         }
 
-        // 2. Mapeia Vacinas -> resVacinas.data.data.vacinas
+        // 2. Mapeia Vacinas
         const listaVacinas = resVacinas.data?.data?.vacinas || [];
         setVacinas(listaVacinas);
+
+        // 3. Mapeia Histórico de Aplicações
+        const listaHistorico = resHistorico.data?.data || resHistorico.data || [];
+        setHistoricoAplicacoes(Array.isArray(listaHistorico) ? listaHistorico : []);
 
       } catch (err) {
         console.error("Erro na busca de dados:", err);
@@ -73,6 +81,37 @@ export default function Dashboard({ setPaginaAtiva }) {
     );
   }, [vacinas]);
 
+  const aplicacoesDoMes = useMemo(() => {
+    if (!Array.isArray(historicoAplicacoes)) return [];
+
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+
+    return historicoAplicacoes
+      .filter((item) => {
+        const rawDate = item.data_aplicacao || item.data;
+        if (!rawDate) return false;
+
+        // Pega apenas YYYY-MM-DD para evitar perda de dia por fuso UTC
+        const dataFormatada = new Date(rawDate.split("T")[0] + "T00:00:00");
+        return (
+          dataFormatada.getMonth() === mesAtual &&
+          dataFormatada.getFullYear() === anoAtual
+        );
+      })
+      .sort((a, b) => new Date(b.data_aplicacao || b.data) - new Date(a.data_aplicacao || a.data));
+  }, [historicoAplicacoes]);
+
+  // 4. Opcional: Filtro exato de Aplicações de HOJE
+  const aplicacoesHoje = useMemo(() => {
+    const hojeStr = new Date().toISOString().split("T")[0];
+    return historicoAplicacoes.filter((item) => {
+      const rawDate = item.data_aplicacao || item.data;
+      return rawDate && rawDate.startsWith(hojeStr);
+    }).length;
+  }, [historicoAplicacoes]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -93,7 +132,7 @@ export default function Dashboard({ setPaginaAtiva }) {
         />
         <KPICard
           titulo="Aplicações Hoje"
-          valor={0}
+          valor={aplicacoesDoMes.length}
           subtitulo="Doses registradas hoje"
           cor="blue"
           icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-5 h-5"><path d="M9 12l2 2 4-4" /><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" /></svg>}
@@ -116,8 +155,68 @@ export default function Dashboard({ setPaginaAtiva }) {
 
       {/* Seção Inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-          <h3 className="font-semibold text-slate-800">Aplicações Recentes</h3>
+        {/* Últimas Aplicações */}
+        {/* Últimas Aplicações */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800">Aplicações Recentes</h3>
+              <button
+                onClick={() => setPaginaAtiva && setPaginaAtiva("aplicacoes")}
+                className="text-xs text-teal-600 font-semibold hover:text-teal-700 transition-colors"
+              >
+                Ver todas →
+              </button>
+            </div>
+
+            {aplicacoesDoMes.length === 0 ? (
+              <div className="px-6 py-12 text-center text-slate-400 text-sm">
+                Nenhuma aplicação registrada neste mês.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {aplicacoesDoMes.slice(0, 5).map((ap) => {
+                  // Extração das propriedades tratadas
+                  const nomePaciente = ap.Paciente?.nome || ap.paciente_nome || ap.pacienteNome || "Paciente";
+
+                  // Cruzamento de segurança para o nome da vacina
+                  const vacinaRelacionada = vacinas.find(v => v.id === (ap.vacina_id || ap.Vacina?.id));
+                  const nomeVacina = ap.Vacina?.nome || ap.vacina_nome || ap.vacinaNome || vacinaRelacionada?.nome || "Vacina";
+
+                  const profissional = ap.profissional_responsavel || ap.profissional || "Não informado";
+                  const rawData = ap.data_aplicacao || ap.data;
+                  const dataFormatada = rawData ? new Date(rawData.split("T")[0] + "T00:00:00").toLocaleDateString("pt-BR") : "-";
+
+                  // Iniciais do paciente para o avatar
+                  const iniciais = nomePaciente
+                    .split(" ")
+                    .filter(Boolean)
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase();
+
+                  return (
+                    <div key={ap.id} className="px-6 py-3.5 flex items-center gap-4 hover:bg-slate-50/60 transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {iniciais}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 truncate">{nomePaciente}</p>
+                        <p className="text-xs text-slate-400 truncate">
+                          {nomeVacina} · <span className="font-medium text-slate-500">{ap.dose}</span>
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs font-medium text-slate-600">{dataFormatada}</p>
+                        <p className="text-[11px] text-slate-400 truncate max-w-[120px]">{profissional}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Lista de Alertas */}
