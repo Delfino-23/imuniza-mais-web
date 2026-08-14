@@ -1,14 +1,10 @@
-// ============================================================
-// App.jsx — Componente raiz do Imuniza+
-// Gerencia o roteamento entre as páginas via estado
-// ============================================================
-
 import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Pacientes from "./pages/Pacientes";
 import Vacinas from "./pages/Vacinas";
 import Aplicacoes from "./pages/Aplicacoes";
+import Login from "./pages/Login";
 
 const PAGINAS = {
   dashboard: Dashboard,
@@ -20,16 +16,31 @@ const PAGINAS = {
 export default function App() {
   const [paginaAtiva, setPaginaAtiva] = useState("dashboard");
 
+  const [estaAutenticado, setEstaAutenticado] = useState(
+    localStorage.getItem("estaLogado") === "true"
+  );
+
+  const handleLogin = () => {
+    localStorage.setItem("estaLogado", "true");
+    setEstaAutenticado(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("estaLogado");
+    setEstaAutenticado(false);
+  };
+
+  if (!estaAutenticado) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   const PaginaAtual = PAGINAS[paginaAtiva] || Dashboard;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar fixa */}
       <Sidebar paginaAtiva={paginaAtiva} setPaginaAtiva={setPaginaAtiva} />
 
-      {/* Conteúdo principal */}
       <main className="flex-1 ml-64 min-h-screen">
-        {/* Topbar */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-100 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <span>Imuniza+</span>
@@ -48,7 +59,19 @@ export default function App() {
               </svg>
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white" />
             </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">AD</div>
+
+            {/* Avatar do usuário */}
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+              AD
+            </div>
+
+            {/* Botão para Sair / Logout */}
+            <button
+              onClick={handleLogout}
+              className="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded border border-slate-200 hover:border-red-200 transition-colors"
+            >
+              Sair
+            </button>
           </div>
         </header>
 
