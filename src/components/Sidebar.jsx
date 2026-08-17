@@ -1,12 +1,10 @@
-// ============================================================
-// Sidebar.jsx — Barra de navegação lateral fixa do Imuniza+
-// ============================================================
-
 import React from "react";
+import { Link, useLocation } from "react-router-dom";
 
 const navItems = [
   {
     id: "dashboard",
+    path: "/dashboard", // Adicionamos a rota correspondente
     label: "Dashboard",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -19,6 +17,7 @@ const navItems = [
   },
   {
     id: "pacientes",
+    path: "/pacientes",
     label: "Pacientes",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -31,6 +30,7 @@ const navItems = [
   },
   {
     id: "vacinas",
+    path: "/vacinas",
     label: "Vacinas",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -45,6 +45,7 @@ const navItems = [
   },
   {
     id: "aplicacoes",
+    path: "/aplicacoes",
     label: "Aplicações",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -55,7 +56,9 @@ const navItems = [
   },
 ];
 
-export default function Sidebar({ paginaAtiva, setPaginaAtiva }) {
+export default function Sidebar() {
+  const location = useLocation(); // Lê a rota atual da URL do navegador
+
   return (
     <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 flex flex-col z-40 shadow-sm">
       {/* Logo */}
@@ -80,11 +83,12 @@ export default function Sidebar({ paginaAtiva, setPaginaAtiva }) {
       <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
         <p className="px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Menu Principal</p>
         {navItems.map((item) => {
-          const ativo = paginaAtiva === item.id;
+          // Verifica se a rota atual corresponde ao caminho do botão
+          const ativo = location.pathname === item.path;
           return (
-            <button
+            <Link
               key={item.id}
-              onClick={() => setPaginaAtiva(item.id)}
+              to={item.path} // Troca a URL ao clicar
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
                 ${ativo
                   ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-100"
@@ -95,7 +99,7 @@ export default function Sidebar({ paginaAtiva, setPaginaAtiva }) {
                 {item.icon}
               </span>
               {item.label}
-            </button>
+            </Link>
           );
         })}
       </nav>

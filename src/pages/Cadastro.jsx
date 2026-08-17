@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-export default function Login({ onLogin }) {
+export default function Cadastro({ onLogin }) {
+    const [nomeCompleto, setNomeCompleto] = useState('');
+    const [cpf, setCpf] = useState('');
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
+    const [confirmarSenha, setConfirmarSenha] = useState('');
     const [mensagem, setMensagem] = useState('');
 
     const navigate = useNavigate();
@@ -44,12 +47,40 @@ export default function Login({ onLogin }) {
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div>
-                        <label htmlFor="loginEmail" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="nomeCompleto" className="block text-sm font-medium text-gray-700">
+                            Nome Completo:
+                        </label>
+                        <input
+                            type="text"
+                            id="NomeCompleto"
+                            className="mt-1 w-full p-2 border border-gray-300 rounded-md"
+                            value={nomeCompleto}
+                            onChange={(e) => setNomeCompleto(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">
+                            CPF:
+                        </label>
+                        <input
+                            type="text"
+                            id="cpf"
+                            className="mt-1 w-full p-2 border border-gray-300 rounded-md"
+                            value={cpf}
+                            onChange={(e) => setCpf(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                             Email:
                         </label>
                         <input
                             type="email"
-                            id="loginEmail"
+                            id="email"
                             className="mt-1 w-full p-2 border border-gray-300 rounded-md"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -58,12 +89,12 @@ export default function Login({ onLogin }) {
                     </div>
 
                     <div>
-                        <label htmlFor="loginSenha" className="block text-sm font-medium text-gray-700">
-                            Senha:
+                        <label htmlFor="senha" className="block text-sm font-medium text-gray-700">
+                            Senha (Mínimo 8 Caracteres):
                         </label>
                         <input
                             type="password"
-                            id="loginSenha"
+                            id="senha"
                             className="mt-1 w-full p-2 border border-gray-300 rounded-md"
                             value={senha}
                             onChange={(e) => setSenha(e.target.value)}
@@ -71,13 +102,24 @@ export default function Login({ onLogin }) {
                         />
                     </div>
 
-                    <div className="flex justify-between gap-4 text-sm text-blue-500">
-                        <Link to="/esqueceu-senha" className="text-sm text-blue-500 hover:text-blue-600">
-                            Esqueceu a senha?
-                        </Link>
+                    <div>
+                        <label htmlFor="confirmarSenha" className="block text-sm font-medium text-gray-700">
+                            Confirmar Senha:
+                        </label>
+                        <input
+                            type="password"
+                            id="confirmarSenha"
+                            className="mt-1 w-full p-2 border border-gray-300 rounded-md"
+                            value={confirmarSenha}
+                            onChange={(e) => setConfirmarSenha(e.target.value)}
+                            required
+                        />
+                    </div>
 
-                        <Link to="/cadastro" className="text-sm text-blue-500 hover:text-blue-600">
-                            Cadastre-se
+                    <div className="flex justify-center gap-4 text-sm text-black">
+                        Já tem acesso?
+                        <Link to="/login" className="text-sm text-blue-500 hover:text-blue-600">
+                            Entrar
                         </Link>
                     </div>
 
@@ -85,7 +127,7 @@ export default function Login({ onLogin }) {
                         type="submit"
                         className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 py-2 rounded-md transition text-white hover:from-teal-600 hover:to-cyan-600"
                     >
-                        Entrar
+                        Criar Acesso
                     </button>
                 </form>
 
