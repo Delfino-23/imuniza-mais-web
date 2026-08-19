@@ -1,10 +1,12 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getUser } from "../utils/auth";
 
-const navItems = [
+// 1. Itens para Funcionário
+const funcionarioItems = [
   {
     id: "dashboard",
-    path: "/dashboard", // Adicionamos a rota correspondente
+    path: "/dashboard",
     label: "Dashboard",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -56,8 +58,45 @@ const navItems = [
   },
 ];
 
+// 2. Itens para Cidadão
+const cidadaoItems = [
+  {
+    id: "carteira",
+    path: "/minha-carteira",
+    label: "Minha Carteira",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
+        <path d="M7 7h10" />
+        <path d="M7 11h10" />
+        <path d="M7 15h6" />
+      </svg>
+    ),
+  },
+];
+
 export default function Sidebar() {
-  const location = useLocation(); // Lê a rota atual da URL do navegador
+  const navigate = useNavigate();
+  const location = useLocation(); // Corrigido: adicionada a chamada do Hook
+  const user = getUser();
+  const papel = user?.papel;
+
+  const handleLogout = () => {
+    localStorage.removeItem("@imuniza:token");
+    localStorage.removeItem("@imuniza:user");
+    navigate("/login");
+  };
+
+  // Define dinamicamente quais rotas exibir
+  const navItems = papel === "funcionario" ? funcionarioItems : cidadaoItems;
+
+  // Gerador simples de iniciais para o avatar (ex: "João Silva" -> "JS")
+  const getIniciais = (nome) => {
+    if (!nome) return "U";
+    const partes = nome.trim().split(" ");
+    if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+  };
 
   return (
     <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 flex flex-col z-40 shadow-sm">
@@ -83,12 +122,11 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
         <p className="px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Menu Principal</p>
         {navItems.map((item) => {
-          // Verifica se a rota atual corresponde ao caminho do botão
           const ativo = location.pathname === item.path;
           return (
             <Link
               key={item.id}
-              to={item.path} // Troca a URL ao clicar
+              to={item.path}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
                 ${ativo
                   ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-100"
@@ -104,17 +142,29 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-slate-100">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors">
+      {/* Footer / Perfil do Usuário com Botão de Logout */}
+      <div className="px-4 py-4 border-t border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            AD
+            {getIniciais(user?.nome)}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-700 truncate">Administrador</p>
-            <p className="text-[10px] text-slate-400 truncate">admin@imuniza.saude</p>
+            <p className="text-xs font-semibold text-slate-700 truncate">{user?.nome || "Usuário"}</p>
+            <p className="text-[10px] text-slate-400 truncate capitalize">{user?.papel || "Acesso"}</p>
           </div>
         </div>
+
+        <button
+          onClick={handleLogout}
+          title="Sair da conta"
+          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-2"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
       </div>
     </aside>
   );

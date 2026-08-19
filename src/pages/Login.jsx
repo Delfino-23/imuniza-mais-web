@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function Login({ onLogin }) {
     const [email, setEmail] = useState('');
@@ -8,14 +9,28 @@ export default function Login({ onLogin }) {
 
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (email === 'admin@imunizamais.com' && senha === 'TrocarSenha123') {
-            setMensagem('Login realizado com sucesso!');
-            onLogin();
-            navigate('/dashboard');
-        } else {
+        try {
+            const response = await api.post('/auth/login', { email, senha });
+            const { token, usuario } = response.data.data;
+
+            localStorage.setItem("@imuniza:token", token);
+            localStorage.setItem("@imuniza:user", JSON.stringify(usuario));
+
+            if (typeof onLogin === 'function') {
+                onLogin(usuario);
+            }
+
+            if (usuario.papel === 'funcionario') {
+                navigate('/dashboard');
+            } else {
+                navigate('/aplicacoes');
+            }
+
+        } catch (error) {
+            console.error('Detalhes do erro:', error.response?.data || error.message);
             setMensagem('E-mail ou senha incorretos.');
         }
     };
