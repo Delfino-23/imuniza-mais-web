@@ -61,9 +61,9 @@ const funcionarioItems = [
 // 2. Itens para Cidadão
 const cidadaoItems = [
   {
-    id: "carteira",
-    path: "/minha-carteira",
-    label: "Minha Carteira",
+    id: "agendamentos",
+    path: "/meus-agendamentos",
+    label: "Meus Agendamentos",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />

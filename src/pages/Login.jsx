@@ -26,7 +26,7 @@ export default function Login({ onLogin }) {
             if (usuario.papel === 'funcionario') {
                 navigate('/dashboard');
             } else {
-                navigate('/aplicacoes');
+                navigate('/meus-agendamentos');
             }
 
         } catch (error) {

@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Pacientes from "./pages/Pacientes";
 import Vacinas from "./pages/Vacinas";
 import Aplicacoes from "./pages/Aplicacoes";
+import MeusAgendamentos from "./pages/Agendamentos";
 
 // Componente para proteger páginas que exigem login
 function RotaProtegida({ estaAutenticado, children }) {
@@ -52,19 +53,30 @@ function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) 
 
 export default function App() {
   const [estaAutenticado, setEstaAutenticado] = useState(
-    localStorage.getItem("estaLogado") === "true"
+    Boolean(localStorage.getItem("@imuniza:token"))
   );
+
+  const [usuario, setUsuario] = useState(() => {
+    const savedUser = localStorage.getItem("@imuniza:user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   const [paginaAtiva, setPaginaAtiva] = useState("dashboard");
 
-  const handleLogin = () => {
-    localStorage.setItem("estaLogado", "true");
+  const handleLogin = (dadosUsuario) => {
+    setUsuario(dadosUsuario);
     setEstaAutenticado(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("estaLogado");
+    localStorage.removeItem("@imuniza:token");
+    localStorage.removeItem("@imuniza:user");
+    setUsuario(null);
     setEstaAutenticado(false);
   };
+
+  // Define a rota inicial com base no perfil do usuário
+  const rotaInicial = usuario?.papel === "funcionario" ? "/dashboard" : "/meus-agendamentos";
 
   return (
     <BrowserRouter>
@@ -73,22 +85,34 @@ export default function App() {
         <Route
           path="/login"
           element={
-            estaAutenticado ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
+            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <Login onLogin={handleLogin} />
           }
         />
         <Route
           path="/cadastro"
           element={
-            estaAutenticado ? <Navigate to="/dashboard" /> : <Cadastro />
+            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <Cadastro />
           }
         />
 
-        {/* Rotas Protegidas (Exigem Login) */}
+        {/* Rota para Cidadão */}
+        <Route
+          path="/meus-agendamentos"
+          element={
+            <RotaProtegida estaAutenticado={estaAutenticado}>
+              <LayoutSistema paginaAtiva="meus-agendamentos" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+                <MeusAgendamentos />
+              </LayoutSistema>
+            </RotaProtegida>
+          }
+        />
+
+        {/* Rotas para Funcionários */}
         <Route
           path="/dashboard"
           element={
             <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="dashboard" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout}>
+              <LayoutSistema paginaAtiva="dashboard" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
                 <Dashboard setPaginaAtiva={setPaginaAtiva} />
               </LayoutSistema>
             </RotaProtegida>
@@ -98,7 +122,7 @@ export default function App() {
           path="/pacientes"
           element={
             <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="pacientes" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout}>
+              <LayoutSistema paginaAtiva="pacientes" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
                 <Pacientes />
               </LayoutSistema>
             </RotaProtegida>
@@ -108,7 +132,7 @@ export default function App() {
           path="/vacinas"
           element={
             <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="vacinas" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout}>
+              <LayoutSistema paginaAtiva="vacinas" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
                 <Vacinas />
               </LayoutSistema>
             </RotaProtegida>
@@ -118,7 +142,7 @@ export default function App() {
           path="/aplicacoes"
           element={
             <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="aplicacoes" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout}>
+              <LayoutSistema paginaAtiva="aplicacoes" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
                 <Aplicacoes />
               </LayoutSistema>
             </RotaProtegida>
@@ -128,7 +152,7 @@ export default function App() {
         {/* Redirecionamento Padrão */}
         <Route
           path="*"
-          element={<Navigate to={estaAutenticado ? "/dashboard" : "/login"} replace />}
+          element={<Navigate to={estaAutenticado ? rotaInicial : "/login"} replace />}
         />
       </Routes>
     </BrowserRouter>
