@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react"; // 1. Adicionado useRef
+import html2pdf from "html2pdf.js"; // 2. Importado html2pdf.js
 import Badge from "../components/Badge";
 import {
   DOSES_OPCOES,
@@ -75,7 +76,8 @@ function AutocompletePaciente({ valor, onChange }) {
 export default function Aplicacoes() {
   const hoje = new Date().toISOString().split("T")[0];
 
-  // 1. Alterado: Começa como array vazio para receber do banco
+  const historicoRef = useRef(null); // 3. Ref para a área que será impressa em PDF
+
   const [aplicacoes, setAplicacoes] = useState([]);
   const [form, setForm] = useState({
     paciente: null,
@@ -89,32 +91,26 @@ export default function Aplicacoes() {
   const [vacinas, setVacinas] = useState([]);
   const POR_PAGINA = 5;
 
-  // Carregar vacinas disponíveis para o formulário
-  // Carregar vacinas disponíveis para o formulário
   useEffect(() => {
     const carregarVacinas = async () => {
       try {
         const response = await api.get("/vacinas/");
         const dados = response.data;
-
-        // Mapeia especificamente o array de vacinas da estrutura do backend
         const listaArray = dados?.data?.vacinas || dados?.vacinas || (Array.isArray(dados) ? dados : []);
         setVacinas(listaArray);
       } catch (error) {
         console.error("Erro ao carregar vacinas:", error);
-        setVacinas([]); // Fallback para array vazio em caso de erro
+        setVacinas([]);
       }
     };
 
     carregarVacinas();
   }, []);
 
-  // 2. NOVO: Carregar registros de histórico salvos no banco de dados
   const carregarHistorico = async () => {
     try {
-      const response = await api.get("/historico/"); // Ajuste o endpoint se for diferente
+      const response = await api.get("/historico/");
       const dados = response.data.data || response.data || [];
-      console.log("Histórico carregado do banco:", dados[0]);
       setAplicacoes(dados);
     } catch (error) {
       console.error("Erro ao carregar histórico de aplicações:", error);
@@ -125,19 +121,39 @@ export default function Aplicacoes() {
     carregarHistorico();
   }, []);
 
+  // 4. Função para acionar o download em PDF
+  const handleGerarPDF = () => {
+    const element = historicoRef.current;
+
+    const options = {
+      margin: 10,
+      filename: `Historico_Aplicacoes_${hoje}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Esconde os botões de paginação apenas dentro do PDF gerado
+          const paginacao = clonedDoc.querySelector('[data-pdf-paginacao]');
+          if (paginacao) paginacao.style.display = 'none';
+        }
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    html2pdf().set(options).from(element).save();
+  };
+
   const listaVacinasDisponiveis = vacinasDisponiveis(vacinas);
-
   const setF = (campo) => (e) => setForm(p => ({ ...p, [campo]: e.target.value }));
-
   const vacinasSelecionada = listaVacinasDisponiveis.find(v => v.id === Number(form.vacinaId));
 
-  // 3. Alterado: Salva no banco de dados de fato via requisição POST
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.paciente || !form.vacinaId || !form.dose || !form.profissional) return;
 
     try {
-      // Pega a vacina diretamente no array carregado
       const vacinaEncontrada = vacinas.find((v) => v.id === Number(form.vacinaId));
       const loteSelecionado = vacinaEncontrada?.lote || vacinaEncontrada?.numero_lote || '';
 
@@ -150,12 +166,11 @@ export default function Aplicacoes() {
         profissional_responsavel: form.profissional,
       };
 
-      await api.post("/historico/", payload); // Ajuste o endpoint se for diferente
+      await api.post("/historico/", payload);
 
       setSucesso(true);
       setForm({ paciente: null, vacinaId: "", data: hoje, dose: "", profissional: "" });
 
-      // Recarrega o histórico atualizado vindo do banco e limpa o alerta de sucesso
       await carregarHistorico();
       setTimeout(() => setSucesso(false), 3000);
     } catch (error) {
@@ -172,10 +187,27 @@ export default function Aplicacoes() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Registro de Aplicações</h2>
-        <p className="text-slate-500 text-sm mt-1">{aplicacoes.length} vacinações registradas no sistema</p>
+      {/* Header com botão de Exportar PDF */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Registro de Aplicações</h2>
+          <p className="text-slate-500 text-sm mt-1">{aplicacoes.length} vacinações registradas no sistema</p>
+        </div>
+
+        {/* 5. Botão de Exportar PDF */}
+        <button
+          onClick={handleGerarPDF}
+          className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-2"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="12" y2="18"></line>
+            <line x1="15" y1="15" x2="12" y2="18"></line>
+          </svg>
+          Exportar PDF
+        </button>
       </div>
 
       {/* Formulário de registro */}
@@ -190,7 +222,6 @@ export default function Aplicacoes() {
           <p className="text-teal-100 text-xs mt-0.5">Preencha todos os campos obrigatórios</p>
         </div>
 
-        {/* Alerta de sucesso */}
         {sucesso && (
           <div className="mx-6 mt-4 flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm font-semibold">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 flex-shrink-0"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
@@ -199,7 +230,6 @@ export default function Aplicacoes() {
         )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Linha 1: Paciente */}
           <div>
             <label className={labelCls}>Paciente *</label>
             <AutocompletePaciente
@@ -213,7 +243,6 @@ export default function Aplicacoes() {
             )}
           </div>
 
-          {/* Linha 2: Vacina */}
           <div>
             <label className={labelCls}>Vacina / Lote Disponível *</label>
             <select className={inputCls} value={form.vacinaId} onChange={setF("vacinaId")} required>
@@ -236,7 +265,6 @@ export default function Aplicacoes() {
             )}
           </div>
 
-          {/* Linha 3: Data, Dose */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Data da Aplicação *</label>
@@ -251,13 +279,11 @@ export default function Aplicacoes() {
             </div>
           </div>
 
-          {/* Linha 4: Profissional */}
           <div>
             <label className={labelCls}>Nome do Profissional / Aplicador *</label>
             <input className={inputCls} value={form.profissional} onChange={setF("profissional")} placeholder="Ex: Enf. Maria Costa" required />
           </div>
 
-          {/* Botão */}
           <button
             type="submit"
             className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-teal-100 flex items-center justify-center gap-2"
@@ -268,8 +294,8 @@ export default function Aplicacoes() {
         </form>
       </div>
 
-      {/* Histórico de aplicações */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Histórico de aplicações (6. Vinculado à ref `historicoRef`) */}
+      <div ref={historicoRef} data-pdf-content className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-2">
         <div className="px-6 py-4 border-b border-slate-100">
           <h3 className="font-semibold text-slate-800">Histórico de Aplicações</h3>
           <p className="text-xs text-slate-400 mt-0.5">Todas as vacinações registradas no sistema</p>
@@ -279,17 +305,16 @@ export default function Aplicacoes() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Paciente</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Vacina</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Lote</th>
+                <th className="text-left px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Vacina</th>
+                <th className="text-left px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Lote</th>
                 <th className="text-center px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Dose</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Profissional</th>
+                <th className="text-left px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Profissional</th>
                 <th className="text-right px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Data</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {paginadas.map((a) => {
                 const nomePaciente = a.Paciente?.nome || a.paciente_nome || "Não informado";
-                // Procura de forma segura usando Array.isArray e Optional Chaining
                 const listaVacinasSegura = Array.isArray(vacinas) ? vacinas : [];
                 const vacinaRelacionada = listaVacinasSegura.find((v) => v.id === (a.vacina_id || a.Vacina?.id));
                 const nomeVacina = a.Vacina?.nome || a.vacina_nome || vacinaRelacionada?.nome || "Não informada";
@@ -306,32 +331,25 @@ export default function Aplicacoes() {
                 const dataAplicacao = a.data_aplicacao || a.data;
 
                 return (
-                  <tr key={a.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          {nomePaciente.split(" ").map(n => n[0]).slice(0, 2).join("")}
-                        </div>
-                        <span className="font-semibold text-slate-700 truncate max-w-[140px]">
-                          {nomePaciente}
-                        </span>
-                      </div>
+                  <tr key={a.id} style={{ height: "40px" }}>
+                    <td style={{ padding: "8px 12px", verticalAlign: "middle", fontWeight: "600", color: "#334155" }}>
+                      {nomePaciente}
                     </td>
-                    <td className="px-6 py-4 text-slate-600 hidden md:table-cell">
-                      <p className="font-medium text-slate-700 truncate max-w-[180px]">
-                        {nomeVacina}
-                      </p>
+                    <td style={{ padding: "8px 12px", verticalAlign: "middle", color: "#475569" }}>
+                      {nomeVacina}
                     </td>
-                    <td className="px-6 py-4 text-slate-500 font-mono text-xs hidden lg:table-cell">
+                    <td style={{ padding: "8px 12px", verticalAlign: "middle", fontFamily: "monospace", color: "#64748b" }}>
                       {loteVacina}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <Badge label={a.dose} cor="blue" />
+                    <td style={{ padding: "8px 12px", verticalAlign: "middle", textAlign: "center" }}>
+                      <span style={{ backgroundColor: "#e0f2fe", color: "#0369a1", padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold" }}>
+                        {a.dose}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-500 text-xs hidden lg:table-cell">
+                    <td style={{ padding: "8px 12px", verticalAlign: "middle", color: "#64748b", fontSize: "12px" }}>
                       {profissional}
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-600 font-medium text-xs">
+                    <td style={{ padding: "8px 12px", verticalAlign: "middle", textAlign: "right", fontWeight: "500", color: "#334155" }}>
                       {dataAplicacao ? new Date(dataAplicacao).toLocaleDateString("pt-BR") : "-"}
                     </td>
                   </tr>
@@ -341,9 +359,8 @@ export default function Aplicacoes() {
           </table>
         </div>
 
-        {/* Paginação */}
         {totalPaginas > 1 && (
-          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+          <div data-pdf-paginacao className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
             <p className="text-xs text-slate-500">
               Exibindo {(pagina - 1) * POR_PAGINA + 1}–{Math.min(pagina * POR_PAGINA, aplicacoes.length)} de {aplicacoes.length}
             </p>
