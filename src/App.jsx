@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
+import EsqueceuSenha from "./pages/EsqueceuSenha";
+import RedefinirSenha from "./pages/RedefinirSenha";
 import Dashboard from "./pages/Dashboard";
 import Pacientes from "./pages/Pacientes";
 import Vacinas from "./pages/Vacinas";
@@ -92,6 +94,18 @@ export default function App() {
           path="/cadastro"
           element={
             estaAutenticado ? <Navigate to={rotaInicial} replace /> : <Cadastro />
+          }
+        />
+        <Route
+          path="/esqueceu-senha"
+          element={
+            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <EsqueceuSenha />
+          }
+        />
+        <Route
+          path="/redefinir-senha"
+          element={
+            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <RedefinirSenha />
           }
         />
 
