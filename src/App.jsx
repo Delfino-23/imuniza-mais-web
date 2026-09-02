@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
@@ -11,6 +11,8 @@ import Pacientes from "./pages/Pacientes";
 import Vacinas from "./pages/Vacinas";
 import Aplicacoes from "./pages/Aplicacoes";
 import MeusAgendamentos from "./pages/Agendamentos";
+import CadastroFunc from "./pages/CadastroFunc";
+import CarteirinhaDigital from "./pages/CarteirinhaDigital";
 
 // Componente para proteger páginas que exigem login
 function RotaProtegida({ estaAutenticado, children }) {
@@ -121,6 +123,17 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/carteirinha"
+          element={
+            <RotaProtegida estaAutenticado={estaAutenticado}>
+              <LayoutSistema paginaAtiva="carteirinha" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+                <CarteirinhaDigital />
+              </LayoutSistema>
+            </RotaProtegida>
+          }
+        />
+
         {/* Rotas para Funcionários */}
         <Route
           path="/dashboard"
@@ -158,6 +171,16 @@ export default function App() {
             <RotaProtegida estaAutenticado={estaAutenticado}>
               <LayoutSistema paginaAtiva="aplicacoes" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
                 <Aplicacoes />
+              </LayoutSistema>
+            </RotaProtegida>
+          }
+        />
+        <Route
+          path="/funcionarios"
+          element={
+            <RotaProtegida estaAutenticado={estaAutenticado}>
+              <LayoutSistema paginaAtiva="funcionarios" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+                <CadastroFunc />
               </LayoutSistema>
             </RotaProtegida>
           }
