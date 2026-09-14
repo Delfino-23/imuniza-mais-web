@@ -8,7 +8,7 @@ export default function Carteirinha() {
 
     const usuarioSalvo = localStorage.getItem("@imuniza:user");
     const usuario = usuarioSalvo ? JSON.parse(usuarioSalvo) : null;
-    const pacienteId = usuario?.id;
+    const pacienteId = usuario?.paciente_id || usuario?.id;
 
     useEffect(() => {
         const buscarDadosCarteirinha = async () => {
@@ -16,6 +16,7 @@ export default function Carteirinha() {
                 setCarregando(true);
                 // Consome a rota que você criou passando o ID na URL
                 const response = await api.get(`/historico/carteirinha/${pacienteId}`);
+                console.log("Chamando URL:", `/historico/carteirinha/...`);
 
                 console.log("Dados recebidos do backend:", response.data);
 

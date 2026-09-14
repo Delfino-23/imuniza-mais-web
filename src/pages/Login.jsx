@@ -36,8 +36,8 @@ export default function Login({ onLogin }) {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-50">
-            <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-50 p-4 sm:p-6 lg:p-8">
+            <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-sm sm:max-w-md lg:max-w-lg">
                 <div className="flex items-center justify-center gap-3 mb-4">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-md">
                         <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">

@@ -1,31 +1,52 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function Cadastro({ onLogin }) {
     const [nomeCompleto, setNomeCompleto] = useState('');
     const [cpf, setCpf] = useState('');
     const [email, setEmail] = useState('');
+    const [dataNascimento, setDataNascimento] = useState('');
+    const [telefone, setTelefone] = useState('');
     const [senha, setSenha] = useState('');
     const [confirmarSenha, setConfirmarSenha] = useState('');
     const [mensagem, setMensagem] = useState('');
 
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (email === 'admin@imunizamais.com' && senha === 'TrocarSenha123') {
-            setMensagem('Login realizado com sucesso!');
-            onLogin();
-            navigate('/dashboard');
-        } else {
-            setMensagem('E-mail ou senha incorretos.');
+        if (senha !== confirmarSenha) {
+            setMensagem("As senhas não coincidem.");
+            return;
         }
-    };
+
+        try {
+            await api.post("/auth/cadastro", {
+                nome: nomeCompleto,
+                cpf: cpf,
+                email: email,
+                dataNascimento: dataNascimento,
+                telefone: telefone,
+                senha: senha,
+                papel: "cidadao"
+            });
+
+            setMensagem("Cadastro realizado com sucesso!");
+
+            setTimeout(() => {
+                navigate("/login");
+            }, 1500);
+        } catch (error) {
+            console.error("Erro ao cadastrar usuário:", error);
+            setMensagem("Ocorreu um erro ao cadastrar. Tente novamente.");
+        }
+    }
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-50">
-            <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-50 p-4 sm:p-6 lg:p-8">
+            <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-sm sm:max-w-md lg:max-w-lg">
                 <div className="flex items-center justify-center gap-3 mb-4">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-md">
                         <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -84,6 +105,34 @@ export default function Cadastro({ onLogin }) {
                             className="mt-1 w-full p-2 border border-gray-300 rounded-md"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="dataNascimento" className="block text-sm font-medium text-gray-700">
+                            Data nascimento:
+                        </label>
+                        <input
+                            type="date"
+                            id="dataNascimento"
+                            className="mt-1 w-full p-2 border border-gray-300 rounded-md"
+                            value={dataNascimento}
+                            onChange={(e) => setDataNascimento(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="telefone" className="block text-sm font-medium text-gray-700">
+                            Telefone:
+                        </label>
+                        <input
+                            type="tel"
+                            id="telefone"
+                            className="mt-1 w-full p-2 border border-gray-300 rounded-md"
+                            value={telefone}
+                            onChange={(e) => setTelefone(e.target.value)}
                             required
                         />
                     </div>
