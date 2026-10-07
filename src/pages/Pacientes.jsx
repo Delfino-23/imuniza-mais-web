@@ -1,19 +1,16 @@
-// ============================================================
-// Pacientes.jsx — Tela de gerenciamento de pacientes
-// ============================================================
-
 import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal";
 import api from "../services/api.js";
-import { formatarCPF, formatarTelefone } from "../utils/formatadores.js";
-
-// Simulando a importação do mock se necessário para a listagem do histórico
-// import { aplicacoes } from "../data/mockData"; 
-const aplicacoes = []; // Caso venha de outro lugar, ajuste aqui
+import { formatarCep, formatarCPF, formatarTelefone } from "../utils/formatadores.js";
+import { buscarCep } from "../utils/buscarCep.js";
+import { exportarParaPdf } from "../utils/pacientes/exportPacientesPdf.js";
+import { exportarParaCsv, exportarParaExcel } from "../utils/pacientes/exportPacientesExcel.js";
+import ExportDropdown from "../components/ExportDropdown.jsx";
 
 function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
-    nome: "", cpf: "", data_nascimento: "", sexo: "", telefone: "", endereco: "",
+    nome: "", cpf: "", data_nascimento: "", telefone: "", endereco: "", logradouro: "",
+    cep: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "",
     ...inicial,
   });
 
@@ -23,6 +20,20 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
     e.preventDefault();
     onSalvar(form);
   };
+
+  const handleCepBlur = async (e) => {
+    const endereco = await buscarCep(e.target.value);
+
+    if (endereco) {
+      setForm((prev) => ({
+        ...prev,
+        logradouro: endereco.logradouro,
+        bairro: endereco.bairro,
+        cidade: endereco.cidade,
+        uf: endereco.uf
+      }))
+    }
+  }
 
   const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition-all";
   const labelCls = "block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide";
@@ -53,16 +64,7 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelCls}>Sexo *</label>
-          <select className={inputCls} value={form.sexo} onChange={set("sexo")} required>
-            <option value="">Selecionar</option>
-            <option value="F">Feminino</option>
-            <option value="M">Masculino</option>
-            <option value="O">Outro</option>
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>Telefone</label>
+          <label className={labelCls}>Telefone *</label>
           <input
             type="text"
             className={inputCls}
@@ -72,10 +74,49 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
             required
           />
         </div>
+        <div>
+          <label className={labelCls}>CEP *</label>
+          <input
+            type="text"
+            className={inputCls}
+            maxLength={9}
+            value={form.cep}
+            onChange={(e) => setForm({ ...form, cep: formatarCep(e.target.value) })}
+            onBlur={handleCepBlur}
+            placeholder="00000-000"
+            required
+          />
+        </div>
       </div>
-      <div>
-        <label className={labelCls}>Endereço</label>
-        <input className={inputCls} value={form.endereco} onChange={set("endereco")} placeholder="Rua, número, bairro, cidade - UF" />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Logradouro</label>
+          <input className={inputCls} value={form.logradouro} onChange={set("logradouro")} placeholder="Nome da rua" />
+        </div>
+        <div>
+          <label className={labelCls}>Número</label>
+          <input className={inputCls} value={form.numero} onChange={set("numero")} placeholder="Número" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Complemento (Opcional)</label>
+          <input className={inputCls} value={form.complemento} onChange={set("complemento")} placeholder="Complemento" />
+        </div>
+        <div>
+          <label className={labelCls}>Bairro</label>
+          <input className={inputCls} value={form.bairro} onChange={set("bairro")} placeholder="Nome do bairro" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Cidade</label>
+          <input className={inputCls} value={form.cidade} onChange={set("cidade")} placeholder="Nome da cidade" />
+        </div>
+        <div>
+          <label className={labelCls}>UF</label>
+          <input className={inputCls} value={form.uf} onChange={set("uf")} placeholder="Sigla do estado" />
+        </div>
       </div>
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancelar} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
@@ -132,8 +173,20 @@ export default function Pacientes() {
   const [modalCadastro, setModalCadastro] = useState(false);
   const [pacienteEdicao, setPacienteEdicao] = useState(null);
   const [pacienteHistorico, setPacienteHistorico] = useState(null);
+  const [pacientesCompleto, setPacientesCompleto] = useState([]);
   const [pagina, setPagina] = useState(1);
-  const POR_PAGINA = 5;
+  const POR_PAGINA = 10;
+
+  const opcoesExportacao = [
+    {
+      label: "Exportar Excel",
+      onClick: () => exportarParaExcel(pacientes.pacientes || pacientes),
+    },
+    {
+      label: "Exportar CSV",
+      onClick: () => exportarParaCsv(pacientes.pacientes || pacientes),
+    }
+  ]
 
   const filtrados = (pacientes.pacientes || []).filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
@@ -189,6 +242,12 @@ export default function Pacientes() {
     setModalCadastro(true);
   };
 
+  useEffect(() => {
+    api.get('/pacientes/').then((res) => {
+      setPacientesCompleto(res.data.data || res.data || []);
+    })
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -196,13 +255,23 @@ export default function Pacientes() {
           <h2 className="text-2xl font-bold text-slate-800">Pacientes</h2>
           <p className="text-slate-500 text-sm mt-1">{(pacientes.total || 0)} pacientes cadastrados</p>
         </div>
-        <button
-          onClick={() => { setPacienteEdicao(null); setModalCadastro(true); }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-teal-100 flex-shrink-0"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
-          Cadastrar Novo Paciente
-        </button>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setPacienteEdicao(null); setModalCadastro(true); }}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-teal-100 flex-shrink-0"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
+            Cadastrar Novo Paciente
+          </button>
+
+          {/* Botão Reutilizável de Exportação */}
+          <ExportDropdown
+            onExportPrincipal={() => exportarParaPdf(pacientes.pacientes || pacientes)}
+            labelPrincipal="Exportar PDF"
+            opcoes={opcoesExportacao}
+          />
+        </div>
       </div>
 
       <div className="relative">

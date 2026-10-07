@@ -9,6 +9,16 @@ export function formatarCPF(cpf) {
     return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 }
 
+export function formatarCep(cep) {
+    if (!cep) return "";
+
+    // Remove tudo que não é dígito
+    cep = cep.replace(/\D/g, "");
+
+    // Aplica a máscara e retorna
+    return cep.replace(/(\d{5})(\d{3})/, "$1-$2");
+}
+
 export function formatarTelefone(telefone) {
     if (!telefone) return "";
 

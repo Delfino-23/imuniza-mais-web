@@ -1,6 +1,4 @@
 import React, { useEffect, useState, useRef } from "react"; // 1. Adicionado useRef
-import html2pdf from "html2pdf.js"; // 2. Importado html2pdf.js
-import Badge from "../components/Badge";
 import {
   DOSES_OPCOES,
   getStatus,
@@ -8,6 +6,9 @@ import {
 import api from "../services/api";
 import { vacinasDisponiveis } from "../utils/vacinasUtils.js";
 import { formatarCPF } from "../utils/formatadores.js";
+import { exportarParaPdf } from "../utils/aplicacoes/exportVacinasPdf.js";
+import { exportarParaCsv, exportarParaExcel } from "../utils/aplicacoes/exportVacinasExcel.js";
+import ExportDropdown from "../components/ExportDropdown.jsx";
 
 // Campo de autocomplete para pacientes
 function AutocompletePaciente({ valor, onChange }) {
@@ -77,6 +78,7 @@ export default function Aplicacoes() {
   const hoje = new Date().toISOString().split("T")[0];
 
   const historicoRef = useRef(null); // 3. Ref para a área que será impressa em PDF
+  const [historicoCompleto, setHistoricoCompleto] = useState([]);
 
   const [aplicacoes, setAplicacoes] = useState([]);
   const [form, setForm] = useState({
@@ -89,7 +91,18 @@ export default function Aplicacoes() {
   const [sucesso, setSucesso] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [vacinas, setVacinas] = useState([]);
-  const POR_PAGINA = 5;
+  const POR_PAGINA = 10;
+
+  const opcoesExportacao = [
+    {
+      label: "Exportar Excel",
+      onClick: () => exportarParaExcel(historicoCompleto, vacinas),
+    },
+    {
+      label: "Exportar CSV",
+      onClick: () => exportarParaCsv(historicoCompleto, vacinas),
+    }
+  ]
 
   useEffect(() => {
     const carregarVacinas = async () => {
@@ -121,29 +134,12 @@ export default function Aplicacoes() {
     carregarHistorico();
   }, []);
 
-  // 4. Função para acionar o download em PDF
-  const handleGerarPDF = () => {
-    const element = historicoRef.current;
-
-    const options = {
-      margin: 10,
-      filename: `Historico_Aplicacoes_${hoje}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        onclone: (clonedDoc) => {
-          // Esconde os botões de paginação apenas dentro do PDF gerado
-          const paginacao = clonedDoc.querySelector('[data-pdf-paginacao]');
-          if (paginacao) paginacao.style.display = 'none';
-        }
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
-
-    html2pdf().set(options).from(element).save();
-  };
+  useEffect(() => {
+    api.get("/historico/").then((res) => {
+      setHistoricoCompleto(res.data.data || res.data || []);
+      console.log("Historico completo carregado:", res.data.data || res.data || []);
+    });
+  }, []);
 
   const listaVacinasDisponiveis = vacinasDisponiveis(vacinas);
   const setF = (campo) => (e) => setForm(p => ({ ...p, [campo]: e.target.value }));
@@ -194,20 +190,12 @@ export default function Aplicacoes() {
           <p className="text-slate-500 text-sm mt-1">{aplicacoes.length} vacinações registradas no sistema</p>
         </div>
 
-        {/* 5. Botão de Exportar PDF */}
-        <button
-          onClick={handleGerarPDF}
-          className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-2"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="12" y1="18" x2="12" y2="12"></line>
-            <line x1="9" y1="15" x2="12" y2="18"></line>
-            <line x1="15" y1="15" x2="12" y2="18"></line>
-          </svg>
-          Exportar PDF
-        </button>
+        {/* Botão Reutilizável de Exportação */}
+        <ExportDropdown
+          onExportPrincipal={() => exportarParaPdf(historicoCompleto, vacinas)}
+          labelPrincipal="Exportar PDF"
+          opcoes={opcoesExportacao}
+        />
       </div>
 
       {/* Formulário de registro */}
