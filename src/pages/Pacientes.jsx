@@ -131,36 +131,112 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
 }
 
 function HistoricoPaciente({ paciente, onFechar }) {
-  const historico = aplicacoes.filter(a => a.pacienteId === paciente.id);
+  const [historico, setHistorico] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(null);
+
+  useEffect(() => {
+    async function buscarHistorico() {
+      if (!paciente || !paciente?.id) return;
+
+      try {
+        setCarregando(true);
+        setErro(null);
+
+        const response = await api.get(`/historico/paciente/${paciente.id}`);
+
+        const dados = response.data.data || response.data || [];
+        const listaHistorico = Array.isArray(dados) ? dados : dados.aplicacoes || dados.data || [];
+        setHistorico(listaHistorico);
+      } catch (error) {
+        console.error("Erro ao buscar histórico: ", error);
+        setErro("Não foi possível buscar o histórico.");
+      } finally {
+        setCarregando(false);
+      }
+    }
+
+    buscarHistorico();
+  }, [paciente?.id]);
+
+  const formatarData = (dataStr) => {
+    if (!dataStr) return "—";
+    const dataPura = typeof dataStr === "string" ? dataStr.split("T")[0] : dataStr;
+    const [ano, mes, dia] = dataPura.split("-");
+    return ano && mes && dia ? `${dia}/${mes}/${ano}` : new Date(dataStr).toLocaleDateString("pt-BR");
+  };
+
   return (
     <div className="space-y-4">
+      {/* Cabeçalho do Paciente */}
       <div className="bg-teal-50 rounded-xl p-4 border border-teal-100">
-        <p className="text-sm font-semibold text-teal-800">{paciente.nome}</p>
+        <p className="text-sm font-semibold text-teal-800">{paciente?.nome || "Não informado"}</p>
         <p className="text-xs text-teal-600 mt-0.5">
-          CPF: {paciente.cpf} · Nasc.: {paciente.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' }) : "—"}
+          CPF: {formatarCPF(paciente?.cpf)} · Nasc.: {formatarData(paciente?.data_nascimento || paciente?.dataNascimento)}
         </p>
       </div>
-      {historico.length === 0 ? (
-        <p className="text-sm text-slate-500 text-center py-6">Nenhuma vacinação registrada.</p>
-      ) : (
-        <div className="space-y-2">
-          {historico.map(h => (
-            <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-4 h-4"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-700">{h.vacinaNome}</p>
-                <p className="text-xs text-slate-400">{h.dose} · Lote: {h.lote} · {h.profissional}</p>
-              </div>
-              <span className="text-xs font-medium text-slate-500 flex-shrink-0">
-                {h.data_nascimento ? new Date(h.data_nascimento).toLocaleDateString("pt-BR", { timeZone: 'UTC' }) : "—"}
-              </span>
-            </div>
-          ))}
+
+      {/* Estado de Carregamento */}
+      {carregando && (
+        <div className="text-center py-6 text-sm text-slate-500">
+          Carregando histórico...
         </div>
       )}
-      <button onClick={onFechar} className="w-full py-2.5 rounded-xl bg-slate-100 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">
+
+      {/* Estado de Erro */}
+      {!carregando && erro && (
+        <div className="text-center py-6 text-sm text-red-500">
+          {erro}
+        </div>
+      )}
+
+      {/* Lista Vazia */}
+      {!carregando && !erro && historico.length === 0 && (
+        <p className="text-sm text-slate-500 text-center py-6">
+          Nenhuma vacinação registrada.
+        </p>
+      )}
+
+      {/* Lista com Registros */}
+      {!carregando && !erro && historico.length > 0 && (
+        <div className="space-y-2">
+          {historico.map((h) => {
+            // Suporta variações de nomes vindos da API/Banco
+            const nomeVacina = h.vacinaNome || h.Vacina?.nome || h.vacina_nome || "Vacina não informada";
+            const dose = h.dose || "Dose Única";
+            const lote = h.lote || h.Vacina?.lote || "-";
+            const profissional = h.profissional || h.profissional_responsavel || "-";
+            const dataAplicacao = h.data_aplicacao || h.dataAplicacao || h.data;
+
+            return (
+              <div key={h.id || Math.random()} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-4 h-4">
+                    <path d="M9 12l2 2 4-4" />
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700">{nomeVacina}</p>
+                  <p className="text-xs text-slate-400">
+                    {dose} · Lote: {lote} · {profissional}
+                  </p>
+                </div>
+
+                <span className="text-xs font-medium text-slate-500 flex-shrink-0">
+                  {formatarData(dataAplicacao)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={onFechar}
+        className="w-full py-2.5 rounded-xl bg-slate-100 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+      >
         Fechar
       </button>
     </div>

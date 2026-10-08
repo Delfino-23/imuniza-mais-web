@@ -1,30 +1,7 @@
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
-
-/**
- * Auxiliar para formatar CPF caso venha apenas em dígitos
- */
-const formatarCPF = (cpf) => {
-    if (!cpf) return 'Não informado';
-    const limpo = String(cpf).replace(/\D/g, '');
-    if (limpo.length !== 11) return cpf; // Retorna original se já estiver formatado ou inválido
-    return limpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-};
-
-/**
- * Auxiliar para formatar Telefone caso venha apenas em dígitos
- */
-const formatarTelefone = (tel) => {
-    if (!tel) return 'Não informado';
-    const limpo = String(tel).replace(/\D/g, '');
-    if (limpo.length === 11) {
-        return limpo.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    } else if (limpo.length === 10) {
-        return limpo.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-    }
-    return tel; // Retorna original se já tiver máscara
-};
+import { formatarCPF, formatarTelefone } from '../formatadores';
 
 /**
  * Mapeia os dados exatamente como na tabela do PDF:
@@ -48,11 +25,14 @@ const formatarDadosPacientesIdenticoPdf = (listaCompleta) => {
                 : new Date(rawDataNasc).toLocaleDateString('pt-BR');
         }
 
+        const cpfFormatado = formatarCPF(p.cpf);
+        const telefoneFormatado = formatarTelefone(p.telefone || p.celular);
+
         return {
             'PACIENTE': p.nome || p.nome_completo || 'Não informado',
-            'CPF': formatarCPF(p.cpf),
+            'CPF': cpfFormatado,
             'DATA DE NASCIMENTO': nascimentoFormatado,
-            'TELEFONE': formatarTelefone(p.telefone || p.celular)
+            'TELEFONE': telefoneFormatado
         };
     });
 };
