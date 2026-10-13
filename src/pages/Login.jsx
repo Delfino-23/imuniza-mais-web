@@ -92,7 +92,7 @@ export default function Login({ onLogin }) {
                         </Link>
 
                         <Link to="/cadastro" className="text-sm text-blue-500 hover:text-blue-600">
-                            Cadastre-se
+                            Criar Acesso
                         </Link>
                     </div>
 

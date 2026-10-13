@@ -10,7 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import Pacientes from "./pages/Pacientes";
 import Vacinas from "./pages/Vacinas";
 import Aplicacoes from "./pages/Aplicacoes";
-import MeusAgendamentos from "./pages/Agendamentos";
+import Agendamentos from "./pages/Agendamentos";
+import MeusAgendamentos from "./pages/MeusAgendamentos";
 import CadastroFunc from "./pages/CadastroFunc";
 import CarteirinhaDigital from "./pages/CarteirinhaDigital";
 
@@ -161,6 +162,16 @@ export default function App() {
             <RotaProtegida estaAutenticado={estaAutenticado}>
               <LayoutSistema paginaAtiva="vacinas" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
                 <Vacinas />
+              </LayoutSistema>
+            </RotaProtegida>
+          }
+        />
+        <Route
+          path="/agendamentos"
+          element={
+            <RotaProtegida estaAutenticado={estaAutenticado}>
+              <LayoutSistema paginaAtiva="agendamentos" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+                <Agendamentos />
               </LayoutSistema>
             </RotaProtegida>
           }
