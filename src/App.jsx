@@ -14,6 +14,8 @@ import Agendamentos from "./pages/Agendamentos";
 import MeusAgendamentos from "./pages/MeusAgendamentos";
 import CadastroFunc from "./pages/CadastroFunc";
 import CarteirinhaDigital from "./pages/CarteirinhaDigital";
+import { getUser } from "./utils/auth";
+import NotificacoesDropdown from "./components/NotificacoesDropdown";
 
 // Componente para proteger páginas que exigem login
 function RotaProtegida({ estaAutenticado, children }) {
@@ -38,6 +40,14 @@ function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [menuAberto]);
+  const user = getUser();
+
+  const getIniciais = (nome) => {
+    if (!nome) return "U";
+    const partes = nome.trim().split(" ");
+    if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -88,14 +98,11 @@ function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) 
               </span>
             </div>
           </div>
-
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-xs font-bold text-white"
-              aria-label="Perfil do usuário"
-            >
-              AD
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+              {getIniciais(user?.nome)}
             </div>
+            <NotificacoesDropdown />
             <button
               onClick={handleLogout}
               className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-500 transition-colors hover:text-red-600"
