@@ -50,13 +50,12 @@ const funcionarioItems = [
     path: "/agendamentos",
     label: "Agendamentos",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="m18 2 4 4" />
-        <path d="m17 7 3-3" />
-        <path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5" />
-        <path d="m9 11 4 4" />
-        <path d="m5 19-3 3" />
-        <path d="m14 4 6 6" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"
+      >
+        <rect x="3" y="5" width="14" height="16" rx="2" />
+        <path d="M7 3v4M13 3v4M3 10h14" />
+        <circle cx="17.5" cy="16.5" r="4.5" />
+        <path d="M17.5 14v2.5l1.5 1" />
       </svg>
     ),
   },
@@ -116,7 +115,7 @@ const cidadaoItems = [
   }
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ menuAberto = false, onFechar = () => { } }) {
   const navigate = useNavigate();
   const location = useLocation(); // Corrigido: adicionada a chamada do Hook
   const user = getUser();
@@ -140,7 +139,12 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 flex flex-col z-40 shadow-sm">
+    <aside
+      id="sidebar-navegacao"
+      aria-label="Navegação Principal"
+      className={`fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-slate-100 bg-white shadow-sm transition-transform duration-300 ease-in-out md:translate-x-0 md:z-40 ${menuAberto ? "translate-x-0" : "-translate-x-full"
+        }`}
+    >
       {/* Logo */}
       <div className="px-6 py-6 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -168,6 +172,7 @@ export default function Sidebar() {
             <Link
               key={item.id}
               to={item.path}
+              onClick={onFechar}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
                 ${ativo
                   ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md shadow-teal-100"

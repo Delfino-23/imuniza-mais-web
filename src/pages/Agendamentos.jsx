@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal.jsx";
 import api from "../services/api.js";
-import { formatarCPF, formatarTelefone } from "../utils/formatadores.js";
-import ExportDropdown from "../components/ExportDropdown.jsx";
 
 function FormAgendamento({ inicial = {}, onSalvar, onCancelar }) {
-  // Ajustado para os campos reais de agendamento do seu banco de dados
   const [form, setForm] = useState({
     paciente_id: "",
     vacina_id: "",
     data_agendamento: "",
-    posto_id: 1, // Fixado na UBS Aterrado conforme conversamos
+    posto_id: 1,
     status: "Agendado",
     ...inicial,
   });
@@ -99,7 +96,6 @@ export default function Agendamentos() {
   const carregarAgendamentos = async () => {
     try {
       const response = await api.get('/agendamentos/');
-      // Ajuste para pegar a lista independentemente de vir direto no array ou em response.data.data
       const dados = response.data.data || response.data || [];
       setAgendamentos(dados);
     } catch (error) {

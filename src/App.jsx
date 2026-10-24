@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
@@ -25,32 +25,89 @@ function RotaProtegida({ estaAutenticado, children }) {
 
 // Layout com Sidebar e Header para as páginas do sistema
 function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) {
+  const [menuAberto, setMenuAberto] = useState(false);
+
+  // Permite fechar a navegação móvel pelo teclado.
+  useEffect(() => {
+    if (!menuAberto) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setMenuAberto(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [menuAberto]);
+
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      <Sidebar paginaAtiva={paginaAtiva} setPaginaAtiva={setPaginaAtiva} />
-      <main className="flex-1 ml-64 min-h-screen">
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-100 px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <span>Imuniza+</span>
-            <span>›</span>
-            <span className="text-slate-700 font-semibold capitalize">
-              {paginaAtiva}
-            </span>
+    <div className="min-h-screen bg-slate-50">
+      <Sidebar
+        menuAberto={menuAberto}
+        onFechar={() => setMenuAberto(false)}
+      />
+
+      {/* Fundo de sobreposição exibido apenas quando o menu móvel está aberto. */}
+      {menuAberto && (
+        <button
+          type="button"
+          aria-label="Fechar menu de navegação"
+          className="fixed inset-0 z-40 bg-slate-900/40 md:hidden"
+          onClick={() => setMenuAberto(false)}
+        />
+      )}
+
+      <main className="min-h-screen min-w-0 w-full md:ml-64 md:w-[calc(100%-16rem)]">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-100 bg-white/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 md:hidden"
+              onClick={() => setMenuAberto(true)}
+              aria-label="Abrir menu de navegação"
+              aria-expanded={menuAberto}
+              aria-controls="sidebar-navegacao"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                className="h-6 w-6"
+                aria-hidden="true"
+              >
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <div className="flex min-w-0 items-center gap-2 text-sm text-slate-400">
+              <span className="shrink-0">Imuniza+</span>
+              <span aria-hidden="true">›</span>
+              <span className="truncate font-semibold capitalize text-slate-700">
+                {paginaAtiva}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-xs font-bold text-white"
+              aria-label="Perfil do usuário"
+            >
               AD
             </div>
             <button
               onClick={handleLogout}
-              className="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded border border-slate-200 transition-colors"
+              className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-500 transition-colors hover:text-red-600"
             >
               Sair
             </button>
           </div>
         </header>
 
-        <div className="px-8 py-8 max-w-6xl">{children}</div>
+        <div className="w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          {children}
+        </div>
       </main>
     </div>
   );
