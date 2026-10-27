@@ -9,12 +9,14 @@ import { formatarCPF } from "../utils/formatadores.js";
 import { exportarParaPdf } from "../utils/aplicacoes/exportVacinasPdf.js";
 import { exportarParaCsv, exportarParaExcel } from "../utils/aplicacoes/exportVacinasExcel.js";
 import ExportDropdown from "../components/ExportDropdown.jsx";
+import AsyncState from "../components/AsyncState";
 
 // Campo de autocomplete para pacientes
 function AutocompletePaciente({ valor, onChange }) {
   const [pacientes, setPacientes] = useState({ total: 0, pacientes: [] });
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState(valor?.nome || "");
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
 
   const filtrados = (pacientes.pacientes || []).filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
@@ -28,11 +30,14 @@ function AutocompletePaciente({ valor, onChange }) {
   };
 
   const carregarPacientes = async () => {
+    setStatusCarregamento("loading");
     try {
       const response = await api.get("/pacientes/");
       setPacientes(response.data.data);
+      setStatusCarregamento("ready");
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
+      setStatusCarregamento("error");
     }
   }
 
@@ -70,6 +75,20 @@ function AutocompletePaciente({ valor, onChange }) {
           ))}
         </div>
       )}
+      {aberto && busca.length >= 1 && statusCarregamento !== "ready" && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-20">
+          <AsyncState
+            status={statusCarregamento}
+            message={statusCarregamento === "loading" ? "Carregando pacientes..." : "Não foi possível carregar os pacientes."}
+            onRetry={carregarPacientes}
+          />
+        </div>
+      )}
+      {aberto && busca.length >= 1 && statusCarregamento === "ready" && filtrados.length === 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-20">
+          <AsyncState status="empty" message="Nenhum paciente corresponde à busca." />
+        </div>
+      )}
     </div>
   );
 }
@@ -78,8 +97,6 @@ export default function Aplicacoes() {
   const hoje = new Date().toISOString().split("T")[0];
 
   const historicoRef = useRef(null); // 3. Ref para a área que será impressa em PDF
-  const [historicoCompleto, setHistoricoCompleto] = useState([]);
-
   const [aplicacoes, setAplicacoes] = useState([]);
   const [form, setForm] = useState({
     paciente: null,
@@ -91,54 +108,41 @@ export default function Aplicacoes() {
   const [sucesso, setSucesso] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [vacinas, setVacinas] = useState([]);
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
   const POR_PAGINA = 10;
 
   const opcoesExportacao = [
     {
       label: "Exportar Excel",
-      onClick: () => exportarParaExcel(historicoCompleto, vacinas),
+      onClick: () => exportarParaExcel(aplicacoes, vacinas),
     },
     {
       label: "Exportar CSV",
-      onClick: () => exportarParaCsv(historicoCompleto, vacinas),
+      onClick: () => exportarParaCsv(aplicacoes, vacinas),
     }
   ]
 
-  useEffect(() => {
-    const carregarVacinas = async () => {
-      try {
-        const response = await api.get("/vacinas/");
-        const dados = response.data;
-        const listaArray = dados?.data?.vacinas || dados?.vacinas || (Array.isArray(dados) ? dados : []);
-        setVacinas(listaArray);
-      } catch (error) {
-        console.error("Erro ao carregar vacinas:", error);
-        setVacinas([]);
-      }
-    };
-
-    carregarVacinas();
-  }, []);
-
-  const carregarHistorico = async () => {
+  const carregarDados = async () => {
+    setStatusCarregamento("loading");
     try {
-      const response = await api.get("/historico/");
-      const dados = response.data.data || response.data || [];
-      setAplicacoes(dados);
+      const [resVacinas, resHistorico] = await Promise.all([
+        api.get("/vacinas/"),
+        api.get("/historico/")
+      ]);
+      const dadosVacinas = resVacinas.data;
+      const listaVacinas = dadosVacinas?.data?.vacinas || dadosVacinas?.vacinas || (Array.isArray(dadosVacinas) ? dadosVacinas : []);
+      const dadosHistorico = resHistorico.data.data || resHistorico.data || [];
+      setVacinas(listaVacinas);
+      setAplicacoes(Array.isArray(dadosHistorico) ? dadosHistorico : []);
+      setStatusCarregamento("ready");
     } catch (error) {
-      console.error("Erro ao carregar histórico de aplicações:", error);
+      console.error("Erro ao carregar dados de aplicações:", error);
+      setStatusCarregamento("error");
     }
   };
 
   useEffect(() => {
-    carregarHistorico();
-  }, []);
-
-  useEffect(() => {
-    api.get("/historico/").then((res) => {
-      setHistoricoCompleto(res.data.data || res.data || []);
-      console.log("Historico completo carregado:", res.data.data || res.data || []);
-    });
+    carregarDados();
   }, []);
 
   const listaVacinasDisponiveis = vacinasDisponiveis(vacinas);
@@ -167,7 +171,7 @@ export default function Aplicacoes() {
       setSucesso(true);
       setForm({ paciente: null, vacinaId: "", data: hoje, dose: "", profissional: "" });
 
-      await carregarHistorico();
+      await carregarDados();
       setTimeout(() => setSucesso(false), 3000);
     } catch (error) {
       console.error("Erro ao salvar aplicação no banco:", error);
@@ -181,6 +185,16 @@ export default function Aplicacoes() {
   const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition-all";
   const labelCls = "block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide";
 
+  if (statusCarregamento !== "ready") {
+    return (
+      <AsyncState
+        status={statusCarregamento}
+        message={statusCarregamento === "loading" ? "Carregando aplicações e vacinas..." : "Não foi possível carregar os dados de aplicações."}
+        onRetry={carregarDados}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header com botão de Exportar PDF */}
@@ -192,7 +206,7 @@ export default function Aplicacoes() {
 
         {/* Botão Reutilizável de Exportação */}
         <ExportDropdown
-          onExportPrincipal={() => exportarParaPdf(historicoCompleto, vacinas)}
+          onExportPrincipal={() => exportarParaPdf(aplicacoes, vacinas)}
           labelPrincipal="Exportar PDF"
           opcoes={opcoesExportacao}
         />
@@ -301,7 +315,13 @@ export default function Aplicacoes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paginadas.map((a) => {
+              {paginadas.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-4 py-6">
+                    <AsyncState status="empty" message="Nenhuma aplicação registrada." />
+                  </td>
+                </tr>
+              ) : paginadas.map((a) => {
                 const nomePaciente = a.Paciente?.nome || a.paciente_nome || "Não informado";
                 const listaVacinasSegura = Array.isArray(vacinas) ? vacinas : [];
                 const vacinaRelacionada = listaVacinasSegura.find((v) => v.id === (a.vacina_id || a.Vacina?.id));

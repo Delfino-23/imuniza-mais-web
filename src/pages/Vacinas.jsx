@@ -7,6 +7,7 @@ import Modal from "../components/Modal";
 import Badge from "../components/Badge";
 import api from "../services/api.js";
 import { getStatus } from "../utils/vacinasUtils.js";
+import AsyncState from "../components/AsyncState";
 
 function FormVacina({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
@@ -72,6 +73,7 @@ export default function Vacinas() {
   const [modalForm, setModalForm] = useState(false);
   const [vacinaEdicao, setVacinaEdicao] = useState(null);
   const [pagina, setPagina] = useState(1);
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
   const POR_PAGINA = 6;
 
   const filtrados = (vacinas.vacinas || []).filter(v =>
@@ -83,12 +85,14 @@ export default function Vacinas() {
   const paginadas = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
   const carregarVacinas = async () => {
+    setStatusCarregamento("loading");
     try {
       const response = await api.get("/vacinas/");
-      console.log("Vacinas carregadas:", response.data.data);
       setVacinas(response.data.data);
+      setStatusCarregamento("ready");
     } catch (error) {
       console.error("Erro ao carregar vacinas:", error);
+      setStatusCarregamento("error");
     }
   };
 
@@ -131,6 +135,16 @@ export default function Vacinas() {
   const regulares = (vacinas.vacinas || []).filter(v => getStatus(v).cor === "green").length;
   const alertas = (vacinas.vacinas || []).filter(v => getStatus(v).cor === "amber").length;
   const criticos = (vacinas.vacinas || []).filter(v => getStatus(v).cor === "red").length;
+
+  if (statusCarregamento !== "ready") {
+    return (
+      <AsyncState
+        status={statusCarregamento}
+        message={statusCarregamento === "loading" ? "Carregando estoque de vacinas..." : "Não foi possível carregar o estoque de vacinas."}
+        onRetry={carregarVacinas}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -195,7 +209,7 @@ export default function Vacinas() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {paginadas.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400 text-sm">Nenhum lote encontrado.</td></tr>
+                <tr><td colSpan="6" className="px-6 py-8"><AsyncState status="empty" message={busca ? "Nenhum lote corresponde à busca." : "Nenhum lote de vacina cadastrado."} /></td></tr>
               ) : paginadas.map((v) => {
                 const s = getStatus(v);
                 const rowHighlight = s.cor === "red" ? "bg-red-50/30" : s.cor === "amber" ? "bg-amber-50/20" : "";

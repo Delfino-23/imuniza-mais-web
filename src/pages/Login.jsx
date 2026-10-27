@@ -16,11 +16,8 @@ export default function Login({ onLogin }) {
             const response = await api.post('/auth/login', { email, senha });
             const { token, usuario } = response.data.data;
 
-            localStorage.setItem("@imuniza:token", token);
-            localStorage.setItem("@imuniza:user", JSON.stringify(usuario));
-
             if (typeof onLogin === 'function') {
-                onLogin(usuario);
+                onLogin(token, usuario);
             }
 
             if (usuario.papel === 'funcionario') {

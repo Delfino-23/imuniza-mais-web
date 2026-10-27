@@ -6,6 +6,7 @@ import { buscarCep } from "../utils/buscarCep.js";
 import { exportarParaPdf } from "../utils/pacientes/exportPacientesPdf.js";
 import { exportarParaCsv, exportarParaExcel } from "../utils/pacientes/exportPacientesExcel.js";
 import ExportDropdown from "../components/ExportDropdown.jsx";
+import AsyncState from "../components/AsyncState";
 
 function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
@@ -134,6 +135,7 @@ function HistoricoPaciente({ paciente, onFechar }) {
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     async function buscarHistorico() {
@@ -157,7 +159,7 @@ function HistoricoPaciente({ paciente, onFechar }) {
     }
 
     buscarHistorico();
-  }, [paciente?.id]);
+  }, [paciente?.id, tentativa]);
 
   const formatarData = (dataStr) => {
     if (!dataStr) return "—";
@@ -178,23 +180,21 @@ function HistoricoPaciente({ paciente, onFechar }) {
 
       {/* Estado de Carregamento */}
       {carregando && (
-        <div className="text-center py-6 text-sm text-slate-500">
-          Carregando histórico...
-        </div>
+        <AsyncState status="loading" message="Carregando histórico..." />
       )}
 
       {/* Estado de Erro */}
       {!carregando && erro && (
-        <div className="text-center py-6 text-sm text-red-500">
-          {erro}
-        </div>
+        <AsyncState
+          status="error"
+          message={erro}
+          onRetry={() => setTentativa(atual => atual + 1)}
+        />
       )}
 
       {/* Lista Vazia */}
       {!carregando && !erro && historico.length === 0 && (
-        <p className="text-sm text-slate-500 text-center py-6">
-          Nenhuma vacinação registrada.
-        </p>
+        <AsyncState status="empty" message="Nenhuma vacinação registrada." />
       )}
 
       {/* Lista com Registros */}
@@ -245,11 +245,11 @@ function HistoricoPaciente({ paciente, onFechar }) {
 
 export default function Pacientes() {
   const [pacientes, setPacientes] = useState({ total: 0, pacientes: [] });
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
   const [busca, setBusca] = useState("");
   const [modalCadastro, setModalCadastro] = useState(false);
   const [pacienteEdicao, setPacienteEdicao] = useState(null);
   const [pacienteHistorico, setPacienteHistorico] = useState(null);
-  const [pacientesCompleto, setPacientesCompleto] = useState([]);
   const [pagina, setPagina] = useState(1);
   const POR_PAGINA = 10;
 
@@ -272,11 +272,14 @@ export default function Pacientes() {
   const paginados = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
   const carregarPacientes = async () => {
+    setStatusCarregamento("loading");
     try {
       const response = await api.get('/pacientes/');
       setPacientes(response.data.data);
+      setStatusCarregamento("ready");
     } catch (error) {
       console.error('Erro ao carregar pacientes:', error);
+      setStatusCarregamento("error");
     }
   };
 
@@ -318,11 +321,15 @@ export default function Pacientes() {
     setModalCadastro(true);
   };
 
-  useEffect(() => {
-    api.get('/pacientes/').then((res) => {
-      setPacientesCompleto(res.data.data || res.data || []);
-    })
-  }, []);
+  if (statusCarregamento !== "ready") {
+    return (
+      <AsyncState
+        status={statusCarregamento}
+        message={statusCarregamento === "loading" ? "Carregando pacientes..." : "Não foi possível carregar os pacientes."}
+        onRetry={carregarPacientes}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -376,7 +383,7 @@ export default function Pacientes() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {paginados.length === 0 ? (
-                <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-400 text-sm">Nenhum paciente encontrado.</td></tr>
+                <tr><td colSpan="5" className="px-6 py-8"><AsyncState status="empty" message={busca ? "Nenhum paciente corresponde à busca." : "Nenhum paciente cadastrado."} /></td></tr>
               ) : paginados.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
                   <td className="px-6 py-4">

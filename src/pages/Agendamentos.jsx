@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal.jsx";
 import api from "../services/api.js";
+import AsyncState from "../components/AsyncState";
 
 function FormAgendamento({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
@@ -91,15 +92,19 @@ export default function Agendamentos() {
   const [modalCadastro, setModalCadastro] = useState(false);
   const [agendamentoEdicao, setAgendamentoEdicao] = useState(null);
   const [pagina, setPagina] = useState(1);
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
   const POR_PAGINA = 10;
 
   const carregarAgendamentos = async () => {
+    setStatusCarregamento("loading");
     try {
       const response = await api.get('/agendamentos/');
       const dados = response.data.data || response.data || [];
       setAgendamentos(dados);
+      setStatusCarregamento("ready");
     } catch (error) {
       console.error('Erro ao carregar os agendamentos:', error);
+      setStatusCarregamento("error");
     }
   };
 
@@ -149,6 +154,16 @@ export default function Agendamentos() {
   const totalPaginas = Math.ceil(filtrados.length / POR_PAGINA);
   const paginados = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
+  if (statusCarregamento !== "ready") {
+    return (
+      <AsyncState
+        status={statusCarregamento}
+        message={statusCarregamento === "loading" ? "Carregando agendamentos..." : "Não foi possível carregar os agendamentos."}
+        onRetry={carregarAgendamentos}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -195,7 +210,7 @@ export default function Agendamentos() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {paginados.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400 text-sm">Nenhum agendamento encontrado.</td></tr>
+                <tr><td colSpan="6" className="px-6 py-8"><AsyncState status="empty" message={busca ? "Nenhum agendamento corresponde à busca." : "Nenhum agendamento cadastrado."} /></td></tr>
               ) : paginados.map((a) => (
                 <tr key={a.id} className="hover:bg-slate-50/60 transition-colors">
                   <td className="px-6 py-4 font-semibold text-slate-800">{a.paciente_nome || `Paciente ID: ${a.paciente_id}`}</td>

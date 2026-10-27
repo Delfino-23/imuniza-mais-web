@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
@@ -14,20 +14,33 @@ import Agendamentos from "./pages/Agendamentos";
 import MeusAgendamentos from "./pages/MeusAgendamentos";
 import CadastroFunc from "./pages/CadastroFunc";
 import CarteirinhaDigital from "./pages/CarteirinhaDigital";
-import { getUser } from "./utils/auth";
 import NotificacoesDropdown from "./components/NotificacoesDropdown";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
-// Componente para proteger páginas que exigem login
-function RotaProtegida({ estaAutenticado, children }) {
-  if (!estaAutenticado) {
+function RotaProtegida({ papel, children }) {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  const papelAtual = user?.papel === "funcionario" ? "funcionario" : "cidadao";
+  if (papelAtual !== papel) {
+    return (
+      <Navigate
+        to={papelAtual === "funcionario" ? "/dashboard" : "/meus-agendamentos"}
+        replace
+      />
+    );
+  }
+
   return children;
 }
 
 // Layout com Sidebar e Header para as páginas do sistema
-function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) {
+function LayoutSistema({ paginaAtiva, children }) {
   const [menuAberto, setMenuAberto] = useState(false);
+  const { logout } = useAuth();
 
   // Permite fechar a navegação móvel pelo teclado.
   useEffect(() => {
@@ -40,14 +53,6 @@ function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [menuAberto]);
-  const user = getUser();
-
-  const getIniciais = (nome) => {
-    if (!nome) return "U";
-    const partes = nome.trim().split(" ");
-    if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
-    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -99,12 +104,9 @@ function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) 
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-              {getIniciais(user?.nome)}
-            </div>
             <NotificacoesDropdown />
             <button
-              onClick={handleLogout}
+              onClick={logout}
               className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-500 transition-colors hover:text-red-600"
             >
               Sair
@@ -120,59 +122,35 @@ function LayoutSistema({ paginaAtiva, setPaginaAtiva, handleLogout, children }) 
   );
 }
 
-export default function App() {
-  const [estaAutenticado, setEstaAutenticado] = useState(
-    Boolean(localStorage.getItem("@imuniza:token"))
-  );
-
-  const [usuario, setUsuario] = useState(() => {
-    const savedUser = localStorage.getItem("@imuniza:user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  const [paginaAtiva, setPaginaAtiva] = useState("dashboard");
-
-  const handleLogin = (dadosUsuario) => {
-    setUsuario(dadosUsuario);
-    setEstaAutenticado(true);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("@imuniza:token");
-    localStorage.removeItem("@imuniza:user");
-    setUsuario(null);
-    setEstaAutenticado(false);
-  };
-
-  // Define a rota inicial com base no perfil do usuário
-  const rotaInicial = usuario?.papel === "funcionario" ? "/dashboard" : "/meus-agendamentos";
+function AppRoutes() {
+  const { isAuthenticated, user, login } = useAuth();
+  const rotaInicial = user?.papel === "funcionario" ? "/dashboard" : "/meus-agendamentos";
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <Routes>
         {/* Rotas Públicas */}
         <Route
           path="/login"
           element={
-            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <Login onLogin={handleLogin} />
+            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <Login onLogin={login} />
           }
         />
         <Route
           path="/cadastro"
           element={
-            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <Cadastro />
+            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <Cadastro />
           }
         />
         <Route
           path="/esqueceu-senha"
           element={
-            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <EsqueceuSenha />
+            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <EsqueceuSenha />
           }
         />
         <Route
           path="/redefinir-senha"
           element={
-            estaAutenticado ? <Navigate to={rotaInicial} replace /> : <RedefinirSenha />
+            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <RedefinirSenha />
           }
         />
 
@@ -180,8 +158,8 @@ export default function App() {
         <Route
           path="/meus-agendamentos"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="meus-agendamentos" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+            <RotaProtegida papel="cidadao">
+              <LayoutSistema paginaAtiva="meus-agendamentos">
                 <MeusAgendamentos />
               </LayoutSistema>
             </RotaProtegida>
@@ -191,8 +169,8 @@ export default function App() {
         <Route
           path="/carteirinha"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="carteirinha" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+            <RotaProtegida papel="cidadao">
+              <LayoutSistema paginaAtiva="carteirinha">
                 <CarteirinhaDigital />
               </LayoutSistema>
             </RotaProtegida>
@@ -203,9 +181,9 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="dashboard" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
-                <Dashboard setPaginaAtiva={setPaginaAtiva} />
+            <RotaProtegida papel="funcionario">
+              <LayoutSistema paginaAtiva="dashboard">
+                <Dashboard />
               </LayoutSistema>
             </RotaProtegida>
           }
@@ -213,8 +191,8 @@ export default function App() {
         <Route
           path="/pacientes"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="pacientes" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+            <RotaProtegida papel="funcionario">
+              <LayoutSistema paginaAtiva="pacientes">
                 <Pacientes />
               </LayoutSistema>
             </RotaProtegida>
@@ -223,8 +201,8 @@ export default function App() {
         <Route
           path="/vacinas"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="vacinas" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+            <RotaProtegida papel="funcionario">
+              <LayoutSistema paginaAtiva="vacinas">
                 <Vacinas />
               </LayoutSistema>
             </RotaProtegida>
@@ -233,8 +211,8 @@ export default function App() {
         <Route
           path="/agendamentos"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="agendamentos" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+            <RotaProtegida papel="funcionario">
+              <LayoutSistema paginaAtiva="agendamentos">
                 <Agendamentos />
               </LayoutSistema>
             </RotaProtegida>
@@ -243,8 +221,8 @@ export default function App() {
         <Route
           path="/aplicacoes"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="aplicacoes" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+            <RotaProtegida papel="funcionario">
+              <LayoutSistema paginaAtiva="aplicacoes">
                 <Aplicacoes />
               </LayoutSistema>
             </RotaProtegida>
@@ -253,8 +231,8 @@ export default function App() {
         <Route
           path="/funcionarios"
           element={
-            <RotaProtegida estaAutenticado={estaAutenticado}>
-              <LayoutSistema paginaAtiva="funcionarios" setPaginaAtiva={setPaginaAtiva} handleLogout={handleLogout} usuario={usuario}>
+            <RotaProtegida papel="funcionario">
+              <LayoutSistema paginaAtiva="funcionarios">
                 <CadastroFunc />
               </LayoutSistema>
             </RotaProtegida>
@@ -264,9 +242,18 @@ export default function App() {
         {/* Redirecionamento Padrão */}
         <Route
           path="*"
-          element={<Navigate to={estaAutenticado ? rotaInicial : "/login"} replace />}
+          element={<Navigate to={isAuthenticated ? rotaInicial : "/login"} replace />}
         />
-      </Routes>
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </BrowserRouter>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getUser } from "../utils/auth";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 // 1. Itens para Funcionário
 const funcionarioItems = [
@@ -116,16 +116,9 @@ const cidadaoItems = [
 ];
 
 export default function Sidebar({ menuAberto = false, onFechar = () => { } }) {
-  const navigate = useNavigate();
   const location = useLocation(); // Corrigido: adicionada a chamada do Hook
-  const user = getUser();
+  const { user } = useAuth();
   const papel = user?.papel;
-
-  const handleLogout = () => {
-    localStorage.removeItem("@imuniza:token");
-    localStorage.removeItem("@imuniza:user");
-    navigate("/login");
-  };
 
   // Define dinamicamente quais rotas exibir
   const navItems = papel === "funcionario" ? funcionarioItems : cidadaoItems;
@@ -199,18 +192,6 @@ export default function Sidebar({ menuAberto = false, onFechar = () => { } }) {
             <p className="text-[10px] text-slate-400 truncate capitalize">{user?.papel || "Acesso"}</p>
           </div>
         </div>
-
-        <button
-          onClick={handleLogout}
-          title="Sair da conta"
-          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-2"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
       </div>
     </aside>
   );

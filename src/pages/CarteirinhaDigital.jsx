@@ -1,42 +1,50 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
+import AsyncState from "../components/AsyncState";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Carteirinha() {
     const [dados, setDados] = useState({ paciente: null, historico: [] });
-    const [carregando, setCarregando] = useState(true);
-    const [erro, setErro] = useState(null);
-
-    const usuarioSalvo = localStorage.getItem("@imuniza:user");
-    const usuario = usuarioSalvo ? JSON.parse(usuarioSalvo) : null;
+    const [statusCarregamento, setStatusCarregamento] = useState("loading");
+    const { user: usuario } = useAuth();
     const pacienteId = usuario?.paciente_id || usuario?.id;
 
-    useEffect(() => {
-        const buscarDadosCarteirinha = async () => {
-            try {
-                setCarregando(true);
-                // Consome a rota que você criou passando o ID na URL
-                const response = await api.get(`/historico/carteirinha/${pacienteId}`);
-                console.log("Chamando URL:", `/historico/carteirinha/...`);
-
-                console.log("Dados recebidos do backend:", response.data);
-
-                // Armazena { paciente, historico } vindo do controller
-                setDados(response.data.data);
-            } catch (err) {
-                console.error("Erro ao carregar carteirinha:", err);
-                setErro("Não foi possível carregar os dados da carteirinha.");
-            } finally {
-                setCarregando(false);
-            }
-        };
-
-        if (pacienteId) {
-            buscarDadosCarteirinha();
+    const buscarDadosCarteirinha = async () => {
+        if (!pacienteId) {
+            setStatusCarregamento("error");
+            return;
         }
+
+        setStatusCarregamento("loading");
+        try {
+            const response = await api.get(`/historico/carteirinha/${pacienteId}`);
+            setDados(response.data.data);
+            setStatusCarregamento("ready");
+        } catch (error) {
+            console.error("Erro ao carregar carteirinha:", error);
+            setStatusCarregamento("error");
+        }
+    };
+
+    useEffect(() => {
+        buscarDadosCarteirinha();
     }, [pacienteId]);
 
-    if (carregando) return <p className="p-4 text-slate-500">Carregando carteirinha...</p>;
-    if (erro) return <p className="p-4 text-red-500">{erro}</p>;
+    if (statusCarregamento !== "ready") {
+        const mensagem = statusCarregamento === "loading"
+            ? "Carregando carteirinha..."
+            : pacienteId
+                ? "Não foi possível carregar os dados da carteirinha."
+                : "Não foi possível identificar o paciente desta conta.";
+
+        return (
+            <AsyncState
+                status={statusCarregamento}
+                message={mensagem}
+                onRetry={buscarDadosCarteirinha}
+            />
+        );
+    }
 
     const { paciente, historico } = dados;
 
@@ -58,7 +66,7 @@ export default function Carteirinha() {
                 </h3>
 
                 {historico.length === 0 ? (
-                    <p className="text-sm text-slate-400">Nenhuma vacina encontrada.</p>
+                    <AsyncState status="empty" message="Nenhuma vacina encontrada." />
                 ) : (
                     <table className="w-full text-sm">
                         <thead>

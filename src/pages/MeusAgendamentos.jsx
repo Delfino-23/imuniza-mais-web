@@ -1,35 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import AsyncState from '../components/AsyncState';
 
 export default function MeusAgendamentos() {
     const [agendamentos, setAgendamentos] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [statusCarregamento, setStatusCarregamento] = useState('loading');
+    const [tentativa, setTentativa] = useState(0);
 
     useEffect(() => {
         async function carregarAgendamentos() {
+            setStatusCarregamento('loading');
             try {
-                const token = localStorage.getItem('@imuniza:token');
-
-                const response = await api.get('/agendamentos/meus-agendamentos', {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
-
-                // Garante que pega a lista correta do retorno da API
+                const response = await api.get('/agendamentos/meus-agendamentos');
                 setAgendamentos(response.data.data || []);
+                setStatusCarregamento('ready');
             } catch (error) {
                 console.error('Erro ao buscar agendamentos:', error);
-            } finally {
-                setLoading(false);
+                setStatusCarregamento('error');
             }
         }
 
         carregarAgendamentos();
-    }, []);
+    }, [tentativa]);
 
-    if (loading) {
-        return <div className="p-6 text-slate-600">Carregando seus agendamentos...</div>;
+    if (statusCarregamento !== 'ready') {
+        return (
+            <AsyncState
+                status={statusCarregamento}
+                message={statusCarregamento === 'loading' ? 'Carregando seus agendamentos...' : 'Não foi possível carregar seus agendamentos.'}
+                onRetry={() => setTentativa(atual => atual + 1)}
+            />
+        );
     }
 
     return (
@@ -40,9 +41,7 @@ export default function MeusAgendamentos() {
             </div>
 
             {agendamentos.length === 0 ? (
-                <div className="bg-slate-50 border border-slate-200 p-8 rounded-lg text-center text-slate-500">
-                    Você não possui nenhum agendamento ativo no momento.
-                </div>
+                <AsyncState status="empty" message="Você não possui nenhum agendamento ativo no momento." />
             ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                     {agendamentos.map((item) => {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { getStatus } from "../utils/vacinasUtils.js";
 import api from "../services/api";
+import AsyncState from "../components/AsyncState";
 
 function KPICard({ titulo, valor, subtitulo, cor, icon }) {
   const cores = {
@@ -29,35 +30,32 @@ export default function Dashboard({ setPaginaAtiva }) {
   const [qtdePacientes, setQtdePacientes] = useState(0);
   const [vacinas, setVacinas] = useState([]);
   const [historicoAplicacoes, setHistoricoAplicacoes] = useState([]);
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
+
+  const carregarDados = async () => {
+    setStatusCarregamento("loading");
+    try {
+      const [resPacientes, resVacinas, resHistorico] = await Promise.all([
+        api.get("/pacientes/"),
+        api.get("/vacinas/"),
+        api.get("/historico/")
+      ]);
+
+      if (resPacientes.data?.totalPacientes !== undefined) {
+        setQtdePacientes(resPacientes.data.totalPacientes);
+      }
+      setVacinas(resVacinas.data?.data?.vacinas || []);
+      const listaHistorico = resHistorico.data?.data || resHistorico.data || [];
+      setHistoricoAplicacoes(Array.isArray(listaHistorico) ? listaHistorico : []);
+      setStatusCarregamento("ready");
+    } catch (error) {
+      console.error("Erro na busca de dados:", error);
+      setStatusCarregamento("error");
+    }
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [resPacientes, resVacinas, resHistorico] = await Promise.all([
-          api.get("/pacientes/"),
-          api.get("/vacinas/"),
-          api.get("/historico/")
-        ])
-
-        // 1. Mapeia Pacientes
-        if (resPacientes.data?.totalPacientes !== undefined) {
-          setQtdePacientes(resPacientes.data.totalPacientes);
-        }
-
-        // 2. Mapeia Vacinas
-        const listaVacinas = resVacinas.data?.data?.vacinas || [];
-        setVacinas(listaVacinas);
-
-        // 3. Mapeia Histórico de Aplicações
-        const listaHistorico = resHistorico.data?.data || resHistorico.data || [];
-        setHistoricoAplicacoes(Array.isArray(listaHistorico) ? listaHistorico : []);
-
-      } catch (err) {
-        console.error("Erro na busca de dados:", err);
-      }
-    }
-
-    fetchData();
+    carregarDados();
   }, []);
 
   // Recalcula o resumo sempre que o array de vacinas mudar
@@ -111,6 +109,16 @@ export default function Dashboard({ setPaginaAtiva }) {
       return rawDate && rawDate.startsWith(hojeStr);
     }).length;
   }, [historicoAplicacoes]);
+
+  if (statusCarregamento !== "ready") {
+    return (
+      <AsyncState
+        status={statusCarregamento}
+        message={statusCarregamento === "loading" ? "Carregando o painel..." : "Não foi possível carregar os dados do painel."}
+        onRetry={carregarDados}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -170,8 +178,8 @@ export default function Dashboard({ setPaginaAtiva }) {
             </div>
 
             {aplicacoesDoMes.length === 0 ? (
-              <div className="px-6 py-12 text-center text-slate-400 text-sm">
-                Nenhuma aplicação registrada neste mês.
+              <div className="p-4">
+                <AsyncState status="empty" message="Nenhuma aplicação registrada neste mês." />
               </div>
             ) : (
               <div className="divide-y divide-slate-50">

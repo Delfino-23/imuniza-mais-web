@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal";
 import api from "../services/api.js";
 import { formatarCPF } from "../utils/formatadores.js";
+import AsyncState from "../components/AsyncState";
 
 function FormFuncionarios({ inicial = {}, onSalvar, onCancelar }) {
     const [form, setForm] = useState({
@@ -76,6 +77,7 @@ function FormFuncionarios({ inicial = {}, onSalvar, onCancelar }) {
 
 export default function CadastroFunc() {
     const [funcionarios, setFuncionarios] = useState({ total: 0, funcionarios: [] });
+    const [statusCarregamento, setStatusCarregamento] = useState("loading");
     const [busca, setBusca] = useState("");
     const [modalCadastro, setModalCadastro] = useState(false);
     const [funcEdicao, setFuncEdicao] = useState(null);
@@ -92,6 +94,7 @@ export default function CadastroFunc() {
 
     // Carrega usuários do banco filtrados pelo papel de funcionário
     const carregarFuncionarios = async () => {
+        setStatusCarregamento("loading");
         try {
             const response = await api.get('/auth/funcionarios');
             const dados = response.data.data || response.data;
@@ -99,8 +102,10 @@ export default function CadastroFunc() {
                 total: dados.total || dados.length || 0,
                 funcionarios: dados.funcionarios || (Array.isArray(dados) ? dados : [])
             });
+            setStatusCarregamento("ready");
         } catch (error) {
             console.error('Erro ao carregar funcionários:', error);
+            setStatusCarregamento("error");
         }
     };
 
@@ -126,6 +131,16 @@ export default function CadastroFunc() {
             alert('Houve um erro ao tentar salvar o funcionário no servidor.');
         }
     };
+
+    if (statusCarregamento !== "ready") {
+        return (
+            <AsyncState
+                status={statusCarregamento}
+                message={statusCarregamento === "loading" ? "Carregando funcionários..." : "Não foi possível carregar os funcionários."}
+                onRetry={carregarFuncionarios}
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -169,7 +184,7 @@ export default function CadastroFunc() {
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                             {paginados.length === 0 ? (
-                                <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-400 text-sm">Nenhum funcionário encontrado.</td></tr>
+                                <tr><td colSpan="5" className="px-6 py-8"><AsyncState status="empty" message={busca ? "Nenhum funcionário corresponde à busca." : "Nenhum funcionário cadastrado."} /></td></tr>
                             ) : paginados.map((f) => (
                                 <tr key={f.id} className="hover:bg-slate-50/60 transition-colors">
                                     <td className="px-6 py-4">
