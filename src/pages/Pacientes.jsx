@@ -289,8 +289,19 @@ export default function Pacientes() {
 
   const cadastrarPaciente = async (dadosForm) => {
     try {
+      const enderecoCompleto = [
+        dadosForm.logradouro,
+        dadosForm.numero,
+        dadosForm.complemento ? `Complemento: ${dadosForm.complemento}` : null,
+        dadosForm.bairro,
+        dadosForm.cidade,
+        dadosForm.uf,
+        dadosForm.cep ? `CEP: ${dadosForm.cep}` : null
+      ].filter(Boolean).join(', ');
+
       const dadosFormatados = {
         ...dadosForm,
+        endereco: enderecoCompleto,
         data_nascimento: dadosForm.data_nascimento ? dadosForm.data_nascimento.split('T')[0] : ""
       };
 
@@ -314,7 +325,14 @@ export default function Pacientes() {
   const abrirEdicao = (p) => {
     const dataFormatada = {
       ...p,
-      data_nascimento: p.data_nascimento ? p.data_nascimento.split('T')[0] : ""
+      data_nascimento: p.data_nascimento ? p.data_nascimento.split('T')[0] : "",
+      logradouro: p.logradouro || "",
+      numero: p.numero || "",
+      complemento: p.complemento || "",
+      bairro: p.bairro || "",
+      cidade: p.cidade || "",
+      uf: p.uf || "",
+      cep: p.cep || ""
     };
 
     setPacienteEdicao(dataFormatada);
