@@ -2,8 +2,8 @@ import axios from 'axios';
 
 const api = axios.create({
 
-    baseURL: 'http://localhost:4000',
-    // baseURL: 'https://imuniza-mais-api.onrender.com/',
+    // baseURL: 'http://localhost:4000',
+    baseURL: 'https://imuniza-mais-api.onrender.com/',
 
     headers: {
         'Content-Type': 'application/json'
