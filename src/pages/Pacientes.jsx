@@ -338,16 +338,19 @@ export default function Pacientes() {
   };
 
   const abrirEdicao = (p) => {
+    const partesEndereco = p.endereco ? p.endereco.split(',').map(s => s.trim()) : [];
+
     const dataFormatada = {
       ...p,
       data_nascimento: p.data_nascimento ? p.data_nascimento.split('T')[0] : "",
-      logradouro: p.logradouro || "",
-      numero: p.numero || "",
-      complemento: p.complemento || "",
-      bairro: p.bairro || "",
-      cidade: p.cidade || "",
-      uf: p.uf || "",
-      cep: p.cep || ""
+      email: p.email || "",
+      logradouro: partesEndereco[0] || "",
+      numero: partesEndereco[1] || "",
+      complemento: partesEndereco.length > 5 ? partesEndereco[2] : "", // Se tiver complemento
+      bairro: partesEndereco.length > 5 ? partesEndereco[3] : partesEndereco[2] || "",
+      cidade: partesEndereco.length > 5 ? partesEndereco[4] : partesEndereco[3] || "",
+      uf: partesEndereco.length > 5 ? partesEndereco[5] : partesEndereco[4] || "",
+      cep: partesEndereco[partesEndereco.length - 1] || "" // O CEP geralmente é o último
     };
 
     setPacienteEdicao(dataFormatada);
