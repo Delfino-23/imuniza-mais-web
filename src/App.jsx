@@ -5,7 +5,6 @@ import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import EsqueceuSenha from "./pages/EsqueceuSenha";
-import RedefinirSenha from "./pages/RedefinirSenha";
 import Dashboard from "./pages/Dashboard";
 import Pacientes from "./pages/Pacientes";
 import Vacinas from "./pages/Vacinas";
@@ -128,122 +127,116 @@ function AppRoutes() {
 
   return (
     <Routes>
-        {/* Rotas Públicas */}
-        <Route
-          path="/login"
-          element={
-            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <Login onLogin={login} />
-          }
-        />
-        <Route
-          path="/cadastro"
-          element={
-            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <Cadastro />
-          }
-        />
-        <Route
-          path="/esqueceu-senha"
-          element={
-            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <EsqueceuSenha />
-          }
-        />
-        <Route
-          path="/redefinir-senha"
-          element={
-            isAuthenticated ? <Navigate to={rotaInicial} replace /> : <RedefinirSenha />
-          }
-        />
+      {/* Rotas Públicas */}
+      <Route
+        path="/login"
+        element={
+          isAuthenticated ? <Navigate to={rotaInicial} replace /> : <Login onLogin={login} />
+        }
+      />
+      <Route
+        path="/cadastro"
+        element={
+          isAuthenticated ? <Navigate to={rotaInicial} replace /> : <Cadastro />
+        }
+      />
+      <Route
+        path="/esqueceu-senha"
+        element={
+          isAuthenticated ? <Navigate to={rotaInicial} replace /> : <EsqueceuSenha />
+        }
+      />
 
-        {/* Rota para Cidadão */}
-        <Route
-          path="/meus-agendamentos"
-          element={
-            <RotaProtegida papel="cidadao">
-              <LayoutSistema paginaAtiva="meus-agendamentos">
-                <MeusAgendamentos />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
+      {/* Rota para Cidadão */}
+      <Route
+        path="/meus-agendamentos"
+        element={
+          <RotaProtegida papel="cidadao">
+            <LayoutSistema paginaAtiva="meus-agendamentos">
+              <MeusAgendamentos />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
 
-        <Route
-          path="/carteirinha"
-          element={
-            <RotaProtegida papel="cidadao">
-              <LayoutSistema paginaAtiva="carteirinha">
-                <CarteirinhaDigital />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
+      <Route
+        path="/carteirinha"
+        element={
+          <RotaProtegida papel="cidadao">
+            <LayoutSistema paginaAtiva="carteirinha">
+              <CarteirinhaDigital />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
 
-        {/* Rotas para Funcionários */}
-        <Route
-          path="/dashboard"
-          element={
-            <RotaProtegida papel="funcionario">
-              <LayoutSistema paginaAtiva="dashboard">
-                <Dashboard />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
-        <Route
-          path="/pacientes"
-          element={
-            <RotaProtegida papel="funcionario">
-              <LayoutSistema paginaAtiva="pacientes">
-                <Pacientes />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
-        <Route
-          path="/vacinas"
-          element={
-            <RotaProtegida papel="funcionario">
-              <LayoutSistema paginaAtiva="vacinas">
-                <Vacinas />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
-        <Route
-          path="/agendamentos"
-          element={
-            <RotaProtegida papel="funcionario">
-              <LayoutSistema paginaAtiva="agendamentos">
-                <Agendamentos />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
-        <Route
-          path="/aplicacoes"
-          element={
-            <RotaProtegida papel="funcionario">
-              <LayoutSistema paginaAtiva="aplicacoes">
-                <Aplicacoes />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
-        <Route
-          path="/funcionarios"
-          element={
-            <RotaProtegida papel="funcionario">
-              <LayoutSistema paginaAtiva="funcionarios">
-                <CadastroFunc />
-              </LayoutSistema>
-            </RotaProtegida>
-          }
-        />
+      {/* Rotas para Funcionários */}
+      <Route
+        path="/dashboard"
+        element={
+          <RotaProtegida papel="funcionario">
+            <LayoutSistema paginaAtiva="dashboard">
+              <Dashboard />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/pacientes"
+        element={
+          <RotaProtegida papel="funcionario">
+            <LayoutSistema paginaAtiva="pacientes">
+              <Pacientes />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/vacinas"
+        element={
+          <RotaProtegida papel="funcionario">
+            <LayoutSistema paginaAtiva="vacinas">
+              <Vacinas />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/agendamentos"
+        element={
+          <RotaProtegida papel="funcionario">
+            <LayoutSistema paginaAtiva="agendamentos">
+              <Agendamentos />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/aplicacoes"
+        element={
+          <RotaProtegida papel="funcionario">
+            <LayoutSistema paginaAtiva="aplicacoes">
+              <Aplicacoes />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/funcionarios"
+        element={
+          <RotaProtegida papel="funcionario">
+            <LayoutSistema paginaAtiva="funcionarios">
+              <CadastroFunc />
+            </LayoutSistema>
+          </RotaProtegida>
+        }
+      />
 
-        {/* Redirecionamento Padrão */}
-        <Route
-          path="*"
-          element={<Navigate to={isAuthenticated ? rotaInicial : "/login"} replace />}
-        />
+      {/* Redirecionamento Padrão */}
+      <Route
+        path="*"
+        element={<Navigate to={isAuthenticated ? rotaInicial : "/login"} replace />}
+      />
     </Routes>
   );
 }
