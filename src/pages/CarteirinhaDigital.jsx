@@ -17,7 +17,8 @@ export default function Carteirinha() {
 
         setStatusCarregamento("loading");
         try {
-            const response = await api.get(`/historico/carteirinha/${pacienteId}`);
+            // const response = await api.get(`/historico/carteirinha/${pacienteId}`);
+            const response = await api.get('/historico/minha-carteirinha');
             setDados(response.data.data);
             setStatusCarregamento("ready");
         } catch (error) {

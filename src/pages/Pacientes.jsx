@@ -10,7 +10,7 @@ import AsyncState from "../components/AsyncState";
 
 function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
-    nome: "", cpf: "", data_nascimento: "", telefone: "", endereco: "", logradouro: "",
+    nome: "", email: "", cpf: "", data_nascimento: "", telefone: "", endereco: "", logradouro: "",
     cep: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "",
     ...inicial,
   });
@@ -41,9 +41,22 @@ function FormPaciente({ inicial = {}, onSalvar, onCancelar }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className={labelCls}>Nome Completo *</label>
-        <input className={inputCls} value={form.nome} onChange={set("nome")} placeholder="Nome completo do paciente" required />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Nome Completo *</label>
+          <input className={inputCls} value={form.nome} onChange={set("nome")} placeholder="Nome completo do paciente" required />
+        </div>
+        <div>
+          <label className={labelCls}>E-mail *</label>
+          <input
+            type="email"
+            className={inputCls}
+            value={form.email || ""}
+            onChange={set("email")}
+            placeholder="exemplo@email.com"
+            required
+          />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -252,6 +265,7 @@ export default function Pacientes() {
   const [pacienteHistorico, setPacienteHistorico] = useState(null);
   const [pagina, setPagina] = useState(1);
   const POR_PAGINA = 10;
+  const [filtroStatus, setFiltroStatus] = useState("ativos");
 
   const opcoesExportacao = [
     {
@@ -274,7 +288,8 @@ export default function Pacientes() {
   const carregarPacientes = async () => {
     setStatusCarregamento("loading");
     try {
-      const response = await api.get('/pacientes/');
+      const endpoint = filtroStatus === "inativos" ? '/pacientes/inativos' : '/pacientes/';
+      const response = await api.get(endpoint);
       setPacientes(response.data.data);
       setStatusCarregamento("ready");
     } catch (error) {
@@ -285,23 +300,23 @@ export default function Pacientes() {
 
   useEffect(() => {
     carregarPacientes();
-  }, []);
+  }, [filtroStatus]);
 
   const cadastrarPaciente = async (dadosForm) => {
     try {
-      const enderecoCompleto = [
-        dadosForm.logradouro,
-        dadosForm.numero,
-        dadosForm.complemento ? `Complemento: ${dadosForm.complemento}` : null,
-        dadosForm.bairro,
-        dadosForm.cidade,
-        dadosForm.uf,
-        dadosForm.cep ? `CEP: ${dadosForm.cep}` : null
-      ].filter(Boolean).join(', ');
+      // const enderecoCompleto = [
+      //   dadosForm.logradouro,
+      //   dadosForm.numero,
+      //   dadosForm.complemento ? `Complemento: ${dadosForm.complemento}` : null,
+      //   dadosForm.bairro,
+      //   dadosForm.cidade,
+      //   dadosForm.uf,
+      //   dadosForm.cep ? `CEP: ${dadosForm.cep}` : null
+      // ].filter(Boolean).join(', ');
 
       const dadosFormatados = {
         ...dadosForm,
-        endereco: enderecoCompleto,
+        estado: dadosForm.uf,
         data_nascimento: dadosForm.data_nascimento ? dadosForm.data_nascimento.split('T')[0] : ""
       };
 
@@ -337,6 +352,44 @@ export default function Pacientes() {
 
     setPacienteEdicao(dataFormatada);
     setModalCadastro(true);
+  };
+
+  const handleInativar = async (id, nome) => {
+    if (window.confirm(`Tem certeza que deseja inativar o paciente ${nome}? O cadastro e os registros históricos serão preservados.`)) {
+      try {
+        // Chama a rota DELETE /pacientes/:id configurada no seu backend
+        await api.delete(`/pacientes/${id}`);
+
+        // Atualiza a lista local removendo o paciente inativado instantaneamente
+        setPacientes(prev => ({
+          ...prev,
+          pacientes: prev.pacientes.filter(paciente => paciente.id !== id),
+          total: prev.total - 1
+        }));
+
+        alert('Paciente inativado com sucesso!');
+      } catch (error) {
+        console.error("Erro ao inativar paciente:", error);
+        alert('Não foi possível inativar o paciente.');
+      }
+    }
+  };
+
+  const handleReativar = async (id, nome) => {
+    if (window.confirm(`Tem certeza de que deseja reativar o paciente ${nome}?`)) {
+      try {
+        // Chama a rota PATCH configurada no backend
+        await api.patch(`/pacientes/${id}/reativar`);
+
+        // Recarrega a lista de pacientes inativos para atualizar a tela
+        await carregarPacientes();
+
+        alert('Paciente reativado com sucesso!');
+      } catch (error) {
+        console.error("Erro ao reativar paciente:", error);
+        alert('Não foi possível reativar o paciente.');
+      }
+    }
   };
 
   if (statusCarregamento !== "ready") {
@@ -387,6 +440,21 @@ export default function Pacientes() {
         />
       </div>
 
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setFiltroStatus("ativos")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${filtroStatus === "ativos" ? "bg-teal-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+        >
+          Pacientes Ativos
+        </button>
+        <button
+          onClick={() => setFiltroStatus("inativos")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${filtroStatus === "inativos" ? "bg-teal-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+        >
+          Pacientes Inativos
+        </button>
+      </div>
+
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -434,6 +502,21 @@ export default function Pacientes() {
                       >
                         Histórico
                       </button>
+                      {filtroStatus === "ativos" ? (
+                        <button
+                          onClick={() => handleInativar(p.id, p.nome)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
+                        >
+                          Inativar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReativar(p.id, p.nome)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-600 border border-teal-200 hover:bg-teal-50 transition-colors"
+                        >
+                          Reativar
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
