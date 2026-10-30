@@ -2,11 +2,182 @@ import React, { useState, useEffect } from "react";
 import Modal from "../components/Modal.jsx";
 import api from "../services/api.js";
 import AsyncState from "../components/AsyncState";
+import { formatarCPF } from "../utils/formatadores.js";
+import { vacinasDisponiveis } from "../utils/vacinasUtils.js";
+
+// Componente de Autocomplete para Pacientes
+function AutocompletePaciente({ valor, onChange }) {
+  const [pacientes, setPacientes] = useState({ total: 0, pacientes: [] });
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState(valor?.nome || "");
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
+
+  const listaPacientes = pacientes.pacientes || (Array.isArray(pacientes) ? pacientes : []);
+  const filtrados = listaPacientes.filter(p =>
+    (p.nome || "").toLowerCase().includes(busca.toLowerCase()) ||
+    (p.cpf || "").includes(busca)
+  ).slice(0, 6);
+
+  const selecionar = (p) => {
+    onChange(p);
+    setBusca(p.nome);
+    setAberto(false);
+  };
+
+  const carregarPacientes = async () => {
+    setStatusCarregamento("loading");
+    try {
+      const response = await api.get("/pacientes/");
+      const dados = response.data.data || response.data || [];
+      setPacientes(Array.isArray(dados) ? { pacientes: dados } : dados);
+      setStatusCarregamento("ready");
+    } catch (error) {
+      console.error("Erro ao carregar pacientes:", error);
+      setStatusCarregamento("error");
+    }
+  };
+
+  useEffect(() => {
+    carregarPacientes();
+  }, []);
+
+  return (
+    <div className="relative">
+      <input
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
+        placeholder="Digite nome ou CPF do paciente..."
+        value={busca}
+        onChange={(e) => { setBusca(e.target.value); setAberto(true); onChange(null); }}
+        onFocus={() => setAberto(true)}
+        onBlur={() => setTimeout(() => setAberto(false), 150)}
+        required
+      />
+      {aberto && busca.length >= 1 && filtrados.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+          {filtrados.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onMouseDown={() => selecionar(p)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-teal-50 transition-colors text-left"
+            >
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                {(p.nome || "P").split(" ").map(n => n[0]).slice(0, 2).join("")}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">{p.nome}</p>
+                <p className="text-xs text-slate-400">{formatarCPF(p.cpf)}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {aberto && busca.length >= 1 && statusCarregamento !== "ready" && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-20">
+          <AsyncState
+            status={statusCarregamento}
+            message={statusCarregamento === "loading" ? "Carregando..." : "Erro ao carregar."}
+            onRetry={carregarPacientes}
+          />
+        </div>
+      )}
+      {aberto && busca.length >= 1 && statusCarregamento === "ready" && filtrados.length === 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white p-3 border rounded-xl text-xs text-slate-400 text-center">
+          Nenhum paciente encontrado.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente de Autocomplete para Vacinas
+function AutocompleteVacina({ valor, onChange }) {
+  const [vacinas, setVacinas] = useState([]);
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [statusCarregamento, setStatusCarregamento] = useState("loading");
+
+  const listaDisponivel = vacinasDisponiveis(vacinas);
+  const filtradas = listaDisponivel.filter(v =>
+    (v.nome || "").toLowerCase().includes(busca.toLowerCase()) ||
+    (v.lote || "").toLowerCase().includes(busca.toLowerCase())
+  ).slice(0, 6);
+
+  const selecionar = (v) => {
+    onChange(v);
+    setBusca(`${v.nome} — Lote: ${v.lote}`);
+    setAberto(false);
+  };
+
+  const carregarVacinas = async () => {
+    setStatusCarregamento("loading");
+    try {
+      const response = await api.get("/vacinas/");
+      const dadosVacinas = response.data;
+      const lista = dadosVacinas?.data?.vacinas || dadosVacinas?.vacinas || (Array.isArray(dadosVacinas) ? dadosVacinas : []);
+      setVacinas(lista);
+      setStatusCarregamento("ready");
+    } catch (error) {
+      console.error("Erro ao carregar vacinas:", error);
+      setStatusCarregamento("error");
+    }
+  };
+
+  useEffect(() => {
+    carregarVacinas();
+  }, []);
+
+  return (
+    <div className="relative">
+      <input
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
+        placeholder="Digite o nome da vacina ou lote..."
+        value={busca}
+        onChange={(e) => { setBusca(e.target.value); setAberto(true); onChange(null); }}
+        onFocus={() => setAberto(true)}
+        onBlur={() => setTimeout(() => setAberto(false), 150)}
+        required
+      />
+      {aberto && busca.length >= 1 && filtradas.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+          {filtradas.map(v => (
+            <button
+              key={v.id}
+              type="button"
+              onMouseDown={() => selecionar(v)}
+              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-teal-50 transition-colors text-left"
+            >
+              <div>
+                <p className="text-sm font-semibold text-slate-700">{v.nome}</p>
+                <p className="text-xs text-slate-400">Lote: {v.lote} · Doses: {v.doses}</p>
+              </div>
+              <span className="text-xs text-teal-600 font-medium">Selecionar</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {aberto && busca.length >= 1 && statusCarregamento !== "ready" && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-20">
+          <AsyncState
+            status={statusCarregamento}
+            message="Carregando vacinas..."
+            onRetry={carregarVacinas}
+          />
+        </div>
+      )}
+      {aberto && busca.length >= 1 && statusCarregamento === "ready" && filtradas.length === 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white p-3 border rounded-xl text-xs text-slate-400 text-center">
+          Nenhuma vacina disponível encontrada.
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FormAgendamento({ inicial = {}, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
-    paciente_id: "",
-    vacina_id: "",
+    paciente: null,
+    vacina: null,
     data_agendamento: "",
     posto_id: 1,
     status: "Agendado",
@@ -17,7 +188,18 @@ function FormAgendamento({ inicial = {}, onSalvar, onCancelar }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSalvar(form);
+    if (!form.paciente || !form.vacina) {
+      alert("Selecione um paciente e uma vacina válidos na lista.");
+      return;
+    }
+
+    const payload = {
+      ...form,
+      paciente_id: form.paciente.id,
+      vacina_id: form.vacina.id
+    };
+
+    onSalvar(payload);
   };
 
   const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition-all";
@@ -26,40 +208,39 @@ function FormAgendamento({ inicial = {}, onSalvar, onCancelar }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className={labelCls}>ID do Paciente</label>
-        <input className={inputCls} type="number" value={form.paciente_id} onChange={set("paciente_id")} placeholder="Digite o ID do paciente" required />
+        <label className={labelCls}>Paciente *</label>
+        <AutocompletePaciente
+          valor={form.paciente}
+          onChange={(p) => setForm(f => ({ ...f, paciente: p }))}
+        />
+        {form.paciente && (
+          <p className="text-xs text-teal-600 mt-1.5 font-medium">
+            ✓ {form.paciente.nome} · CPF: {formatarCPF(form.paciente.cpf)}
+          </p>
+        )}
       </div>
+
+      <div>
+        <label className={labelCls}>Vacina *</label>
+        <AutocompleteVacina
+          valor={form.vacina}
+          onChange={(v) => setForm(f => ({ ...f, vacina: v }))}
+        />
+        {form.vacina && (
+          <p className="text-xs text-teal-600 mt-1.5 font-medium">
+            ✓ {form.vacina.nome} — Lote: {form.vacina.lote}
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelCls}>ID da Vacina</label>
-          <input
-            type="number"
-            className={inputCls}
-            value={form.vacina_id}
-            onChange={set("vacina_id")}
-            placeholder="ID da vacina"
-            required
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Data e Hora do Agendamento</label>
+          <label className={labelCls}>Data e Hora do Agendamento *</label>
           <input
             type="datetime-local"
             className={inputCls}
             value={form.data_agendamento ? form.data_agendamento.slice(0, 16) : ""}
             onChange={set("data_agendamento")}
-            required
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>Posto de Saúde</label>
-          <input
-            type="text"
-            className={inputCls}
-            value="UBS Aterrado"
-            disabled
             required
           />
         </div>
@@ -74,6 +255,7 @@ function FormAgendamento({ inicial = {}, onSalvar, onCancelar }) {
           />
         </div>
       </div>
+
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancelar} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
           Cancelar
@@ -114,7 +296,6 @@ export default function Agendamentos() {
 
   const salvarAgendamento = async (dadosForm) => {
     try {
-      // Ajusta o formato da data para o MySQL (troca 'T' por espaço e adiciona segundos se necessário)
       const dataFormatadaParaSql = dadosForm.data_agendamento
         ? dadosForm.data_agendamento.replace('T', ' ') + (dadosForm.data_agendamento.length === 16 ? ':00' : '')
         : "";
@@ -137,7 +318,8 @@ export default function Agendamentos() {
       setAgendamentoEdicao(null);
     } catch (error) {
       console.error("Erro ao salvar agendamento:", error);
-      alert('Houve um erro ao tentar salvar o agendamento no servidor.');
+      const mensagem = error.response?.data?.message || "Houve um erro ao tentar salvar o agendamento no servidor.";
+      alert(mensagem);
     }
   };
 

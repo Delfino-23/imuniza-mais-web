@@ -128,7 +128,8 @@ export default function CadastroFunc() {
             setFuncEdicao(null);
         } catch (error) {
             console.error("Erro ao salvar funcionário:", error);
-            alert('Houve um erro ao tentar salvar o funcionário no servidor.');
+            const mensagem = error.response?.data?.message || "Houve um erro ao tentar salvar o funcionário.";
+            alert(mensagem);
         }
     };
 

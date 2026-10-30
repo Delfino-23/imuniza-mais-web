@@ -333,7 +333,8 @@ export default function Pacientes() {
       setPacienteEdicao(null);
     } catch (error) {
       console.error("Erro ao salvar paciente:", error);
-      alert('Houve um erro ao tentar salvar o paciente no servidor.');
+      const mensagem = error.response?.data?.message || "Houve um erro ao tentar salvar o paciente no servidor."
+      alert(mensagem);
     }
   };
 

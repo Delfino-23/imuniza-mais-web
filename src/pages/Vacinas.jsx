@@ -118,6 +118,8 @@ export default function Vacinas() {
       setVacinaEdicao(null);
     } catch (error) {
       console.error("Erro ao cadastrar vacina:", error);
+      const mensagem = error.response?.data?.message || "Ocorreu um erro ao salvar vacina.";
+      alert(mensagem);
     }
   }
 

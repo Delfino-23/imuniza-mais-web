@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { getStatus } from "../utils/vacinasUtils.js";
 import api from "../services/api";
 import AsyncState from "../components/AsyncState";
+import { Link } from "react-router-dom";
 
 function KPICard({ titulo, valor, subtitulo, cor, icon }) {
   const cores = {
@@ -164,17 +165,16 @@ export default function Dashboard({ setPaginaAtiva }) {
       {/* Seção Inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Últimas Aplicações */}
-        {/* Últimas Aplicações */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between">
           <div>
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-semibold text-slate-800">Aplicações Recentes</h3>
-              <button
-                onClick={() => setPaginaAtiva && setPaginaAtiva("aplicacoes")}
+              <Link
+                to="/aplicacoes"
                 className="text-xs text-teal-600 font-semibold hover:text-teal-700 transition-colors"
               >
                 Ver todas →
-              </button>
+              </Link>
             </div>
 
             {aplicacoesDoMes.length === 0 ? (
@@ -231,14 +231,16 @@ export default function Dashboard({ setPaginaAtiva }) {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-semibold text-slate-800">Alertas de Estoque</h3>
-            <button onClick={() => setPaginaAtiva && setPaginaAtiva("vacinas")} className="text-xs text-teal-600 font-semibold hover:text-teal-700">
+            <Link
+              to="/vacinas"
+              className="text-xs text-teal-600 font-semibold hover:text-teal-700 transition-colors"
+            >
               Gerenciar →
-            </button>
+            </Link>
           </div>
 
           {resumoVacinas.listaAlertas.length === 0 ? (
             <div className="px-6 py-10 text-center">
-              <div className="text-3xl mb-2">✅</div>
               <p className="text-sm text-slate-500">Todos os lotes estão regulares.</p>
             </div>
           ) : (

@@ -175,7 +175,8 @@ export default function Aplicacoes() {
       setTimeout(() => setSucesso(false), 3000);
     } catch (error) {
       console.error("Erro ao salvar aplicação no banco:", error);
-      alert("Ocorreu um erro ao registrar a aplicação no banco de dados.");
+      const mensagem = error.response?.data?.message || "Ocorreu um erro ao registrar a aplicação."
+      alert(mensagem);
     }
   };
 
