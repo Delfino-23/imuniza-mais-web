@@ -119,7 +119,7 @@ export default function CadastroFunc() {
                 await api.put(`/usuarios/${funcEdicao.id}`, dadosForm);
                 alert('Funcionário atualizado com sucesso!');
             } else {
-                await api.post('/usuarios/', dadosForm);
+                await api.post('/auth/admin/cadastrar-funcionario', dadosForm);
                 alert('Funcionário cadastrado com sucesso!');
             }
 
